@@ -1,0 +1,416 @@
+{
+  "name": "Obsidian Glass",
+  "style": {
+    "bgType": "linear",
+    "c1": "#0B0D12",
+    "c2": "#1C2230",
+    "angle": 135,
+    "glyphColor": "#E6EBF5",
+    "glyphScale": 0.52,
+    "strokeWidth": 1.6,
+    "overlay": "gloss",
+    "glyphShadow": true
+  },
+  "icons": [
+    {
+      "id": "i57_iov66",
+      "label": "Phone",
+      "glyph": "Phone",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i58_76vqc",
+      "label": "Messages",
+      "glyph": "MessageCircle",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i59_zcqvv",
+      "label": "Mail",
+      "glyph": "Mail",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i60_8p9ba",
+      "label": "Safari",
+      "glyph": "Compass",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i61_ltqnt",
+      "label": "Camera",
+      "glyph": "Camera",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i62_dl06y",
+      "label": "Photos",
+      "glyph": "Image",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i63_9br6q",
+      "label": "Settings",
+      "glyph": "Settings",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i64_qek9z",
+      "label": "Maps",
+      "glyph": "Map",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i65_mgegl",
+      "label": "Music",
+      "glyph": "Music",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i66_lc8xi",
+      "label": "Calendar",
+      "glyph": "Calendar",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i67_4flx4",
+      "label": "Clock",
+      "glyph": "Clock",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i68_3csdh",
+      "label": "Notes",
+      "glyph": "StickyNote",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i69_qwy5a",
+      "label": "Reminders",
+      "glyph": "ListChecks",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i70_zdtu9",
+      "label": "Weather",
+      "glyph": "CloudSun",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i71_688vg",
+      "label": "Calculator",
+      "glyph": "Calculator",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i72_wrdwl",
+      "label": "Wallet",
+      "glyph": "Wallet",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i73_xwnpp",
+      "label": "Health",
+      "glyph": "HeartPulse",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i74_232eq",
+      "label": "App Store",
+      "glyph": "si:appstore",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i75_oivsl",
+      "label": "Podcasts",
+      "glyph": "Podcast",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i76_cnhp7",
+      "label": "FaceTime",
+      "glyph": "Video",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i77_l99sp",
+      "label": "Files",
+      "glyph": "Folder",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i78_wqh81",
+      "label": "Home",
+      "glyph": "House",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i79_uscyg",
+      "label": "Books",
+      "glyph": "BookOpen",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i80_qxpg5",
+      "label": "Fitness",
+      "glyph": "Dumbbell",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i81_sdv9f",
+      "label": "Instagram",
+      "glyph": "si:instagram",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i82_1ohzb",
+      "label": "X",
+      "glyph": "si:x",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i83_hiplo",
+      "label": "Facebook",
+      "glyph": "si:facebook",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i84_t3jcc",
+      "label": "TikTok",
+      "glyph": "si:tiktok",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i85_2zngv",
+      "label": "Snapchat",
+      "glyph": "si:snapchat",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i86_kxlbl",
+      "label": "WhatsApp",
+      "glyph": "si:whatsapp",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i87_yw8wz",
+      "label": "Telegram",
+      "glyph": "si:telegram",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i88_d7a4y",
+      "label": "Messenger",
+      "glyph": "si:messenger",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i89_73iz1",
+      "label": "Threads",
+      "glyph": "si:threads",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i90_evvlb",
+      "label": "Reddit",
+      "glyph": "si:reddit",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i91_jwt55",
+      "label": "Discord",
+      "glyph": "si:discord",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i92_mxe7k",
+      "label": "YouTube",
+      "glyph": "si:youtube",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i93_1aydv",
+      "label": "Netflix",
+      "glyph": "si:netflix",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i94_n8wxy",
+      "label": "Spotify",
+      "glyph": "si:spotify",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i95_n4759",
+      "label": "Twitch",
+      "glyph": "si:twitch",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i96_tkuao",
+      "label": "Gmail",
+      "glyph": "si:gmail",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i97_asrui",
+      "label": "Chrome",
+      "glyph": "si:googlechrome",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i98_lx84m",
+      "label": "Google Maps",
+      "glyph": "si:googlemaps",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i99_8j3hh",
+      "label": "ChatGPT",
+      "glyph": "ag:openai-chatgpt",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i100_kyjlz",
+      "label": "Notion",
+      "glyph": "si:notion",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i101_47czs",
+      "label": "Slack",
+      "glyph": "Slack",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i102_k5a8k",
+      "label": "Zoom",
+      "glyph": "si:zoom",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i103_bjhev",
+      "label": "PayPal",
+      "glyph": "si:paypal",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i104_8lh4j",
+      "label": "Banking",
+      "glyph": "Landmark",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i105_ak8nm",
+      "label": "Amazon",
+      "glyph": "ag:amazon",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    },
+    {
+      "id": "i106_1waj4",
+      "label": "Uber",
+      "glyph": "si:uber",
+      "image": null,
+      "imageMode": "cover",
+      "ov": {}
+    }
+  ]
+}
