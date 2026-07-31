@@ -60,7 +60,7 @@ function download(blob, filename) {
 
 export default function ExportTab({ pack, setPack }) {
   const [sizes, setSizes] = useState({ 1024: true, 512: false, 256: false });
-  const [extras, setExtras] = useState({ cover: true, readme: true, wallpapers: true, mockup: true, manifest: true, profile: false });
+  const [extras, setExtras] = useState({ cover: true, readme: true, wallpapers: true, mockup: true, manifest: true, profile: false, lovable: false });
   const [variants, setVariants] = useState({ dark: false, mono: false });
   const [baseUrl, setBaseUrl] = useState('');
   const [busy, setBusy] = useState('');
@@ -110,6 +110,45 @@ export default function ExportTab({ pack, setPack }) {
     if (extras.cover) {
       setBusy('Rendering cover…');
       root.file('cover.png', await renderCoverPng(pack));
+    }
+    if (extras.lovable) {
+      // CrestWall/Lovable admin bundle: app_key-named PNGs in light/dark/mono
+      // folders, 512px masters + 180px profile embeds — matches rev. 3's
+      // uploader ("folder of PNGs named instagram.png") and needs no
+      // server-side resizing.
+      const appKey = (l) => l.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const styleSets = [
+        ['light', (s) => s, (i) => i],
+        ['dark', darkStyle, darkIcon],
+        ['mono', monoStyle, monoIcon],
+      ];
+      const lf = root.folder('lovable-bundle');
+      let ldone = 0;
+      const ltotal = pack.icons.length * styleSets.length * 2;
+      for (const [styleKey, fs, fi] of styleSets) {
+        const style = fs(pack.style);
+        const f512 = lf.folder(styleKey);
+        const f180 = lf.folder(`${styleKey}-180`);
+        for (const ic of pack.icons) {
+          setBusy(`Lovable bundle ${++ldone}/${ltotal}…`);
+          f512.file(`${appKey(ic.label)}.png`, await renderIconPng(fi(ic), style, 512));
+          ldone++;
+          f180.file(`${appKey(ic.label)}.png`, await renderIconPng(fi(ic), style, 180));
+        }
+      }
+      lf.file(
+        'pack.json',
+        JSON.stringify(
+          {
+            slug: sanitize(pack.name).toLowerCase(),
+            name: pack.name,
+            icon_count: pack.icons.length,
+            items: pack.icons.map((ic, i) => ({ app_key: appKey(ic.label), default_label: ic.label, sort_order: i })),
+          },
+          null,
+          2
+        )
+      );
     }
     if (extras.profile) {
       setBusy('Building install profile…');
@@ -237,6 +276,9 @@ export default function ExportTab({ pack, setPack }) {
           </label>
           <label>
             <input type="checkbox" checked={extras.profile} onChange={() => toggle(extras, setExtras, 'profile')} /> Install profile (.mobileconfig)
+          </label>
+          <label>
+            <input type="checkbox" checked={extras.lovable} onChange={() => toggle(extras, setExtras, 'lovable')} /> Lovable bundle (CrestWall admin)
           </label>
         </div>
         {extras.profile && (
