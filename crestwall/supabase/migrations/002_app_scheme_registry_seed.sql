@@ -1,3 +1,5 @@
+-- INITIAL BOOTSTRAP ONLY — safe to re-run (inserts skip existing rows).
+-- The live registry (with confidence/status curation) supersedes this file.
 -- app_scheme_registry seed, generated from Icon Pack Studio's
 -- device-verified URL scheme database (src/urlSchemes.js).
 -- confidence: 'verified' = launched correct app on real device (iOS 26).
@@ -142,8 +144,7 @@ values
   ('speedtest', 'Speedtest', 'speedtest://', false, 'medium'),
   ('firefox', 'Firefox', 'firefox://', false, 'high'),
   ('arc', 'Arc', 'arc://', false, 'medium')
-on conflict (app_key) do update set
-  display_name = excluded.display_name,
-  url_scheme = excluded.url_scheme,
-  is_native_apple = excluded.is_native_apple,
-  confidence = excluded.confidence;
+on conflict (app_key) do nothing;
+-- DO NOTHING is deliberate: after the registry correctness pass (quarantine
+-- statuses, device-test promotions, payload fixes) the live registry is the
+-- source of truth. Re-running this bootstrap must never clobber curated rows.
