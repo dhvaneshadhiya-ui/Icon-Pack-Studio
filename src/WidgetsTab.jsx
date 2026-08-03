@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { WIDGET_SIZES, widgetSvg, renderWidgetPng, downloadBlob } from './svg.js';
+import { WIDGET_SIZES, widgetSvg, renderWidgetPng, despiaWidgetSvg, downloadBlob } from './svg.js';
 import { scriptableWidget } from './scriptable.js';
 
 const sanitize = (s) => s.replace(/[^\w\- ]/g, '').trim().replace(/\s+/g, '-') || 'pack';
@@ -33,6 +33,16 @@ export default function WidgetsTab({ pack }) {
   const dlScriptable = () => {
     const { filename, content } = scriptableWidget(pack);
     downloadBlob(new Blob([content], { type: 'application/json' }), filename);
+  };
+
+  const liveOpts = { type, glyph: type === 'art' ? glyph : undefined, text };
+  const livePreview = useMemo(
+    () => despiaWidgetSvg(pack.style, { ...liveOpts, type: type === 'quote' ? 'quote' : 'date', sample: true }),
+    [pack.style, type, glyph, text]
+  );
+  const dlTemplate = () => {
+    const svg = despiaWidgetSvg(pack.style, { ...liveOpts, type: type === 'quote' ? 'quote' : 'date', sample: false });
+    downloadBlob(new Blob([svg], { type: 'image/svg+xml' }), 'widget-template.svg');
   };
 
   const glyphChoices = [...new Set(pack.icons.filter((i) => !i.image).map((i) => i.glyph))];
@@ -86,6 +96,25 @@ export default function WidgetsTab({ pack }) {
             Styled from “{pack.name}” — background, pattern, grain and ring settings all carry over.
             iOS rounds the corners; PNGs are intentionally square-edged.
           </p>
+          <h3 style={{ marginTop: 24 }}>CrestWall live widget (Despia)</h3>
+          <p className="note">
+            360×169 template with live-date tokens — upload as{' '}
+            <code>packs/&lt;slug&gt;/widget-template.svg</code> and the widget-svg Edge Function
+            fills in real values on every refresh. Preview shows today's date.
+          </p>
+          <div className="wp-card" style={{ maxWidth: 400 }}>
+            <div
+              className="wg-preview"
+              style={{ aspectRatio: '360 / 169' }}
+              dangerouslySetInnerHTML={{ __html: livePreview }}
+            />
+            <div className="wp-row">
+              <span>live · 360×169</span>
+              <button className="btn small" onClick={dlTemplate}>Download template</button>
+            </div>
+          </div>
+
+          <h3 style={{ marginTop: 24 }}>Static widget images</h3>
           <div className="wg-grid">
             {previews.map(([k, svg]) => (
               <div className="wp-card" key={k}>

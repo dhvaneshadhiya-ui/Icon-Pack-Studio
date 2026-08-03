@@ -315,6 +315,21 @@ widget://https://crestwall.app/w?type=date&c1=%230B0D12&…&refresh=30
   battery pressure — so no clocks, dates are the finest safe granularity;
   data:/blob: URLs rejected (must be plain HTTPS).
 
+**Live widgets are pushed to Lovable as data, not code.** The Studio designs
+the full 360×169 widget (any styling it can render, including glyph motifs)
+and exports `widget-template.svg` containing `{TOKEN}` placeholders
+(`{WEEKDAY} {WEEKDAY_SHORT} {DAY} {MONTH} {MONTH_SHORT} {YEAR}`). Upload it
+to `packs/<slug>/widget-template.svg`; the widget-svg function's template
+mode (`?pack=<slug>`) fetches it (5-min in-memory cache), substitutes live
+values on every refresh, and serves it. Registration URL:
+
+```
+widget://https://crestwall.app/w?pack=obsidian-glass&refresh=30
+```
+
+New widget design = new file upload. No function change, no app change, no
+resubmission. The parameter mode (§ above) remains the no-template fallback.
+
 Widgets for people *without* CrestWall (Gumroad buyers) remain the static
 PNG + Scriptable route the Studio's Widgets tab exports.
 

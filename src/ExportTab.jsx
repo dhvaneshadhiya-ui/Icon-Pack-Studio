@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import JSZip from 'jszip';
 import {
   renderIconPng, renderCoverPng, renderWallpaperPng, renderMockupPng, renderWidgetPng,
-  WALLPAPER_VARIANTS, WIDGET_SIZES,
+  despiaWidgetSvg, WALLPAPER_VARIANTS, WIDGET_SIZES,
   darkStyle, darkIcon, monoStyle, monoIcon, shade,
 } from './svg.js';
 import { buildMobileConfig } from './mobileconfig.js';
@@ -117,6 +117,11 @@ export default function ExportTab({ pack, setPack }) {
       }
       const sw = scriptableWidget(pack);
       wgf.file(sw.filename, sw.content);
+      // Despia live-widget template — upload to packs/<slug>/widget-template.svg
+      wgf.file(
+        'widget-template.svg',
+        despiaWidgetSvg(pack.style, { type: 'date', glyph: motif, sample: false })
+      );
     }
     if (extras.mockup) {
       setBusy('Rendering home-screen preview…');

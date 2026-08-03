@@ -378,6 +378,88 @@ export async function renderWidgetPng(style, sizeKey, opts = {}) {
 }
 
 // ---------------------------------------------------------------------------
+// Despia live-widget template (360×169, per Despia Home Widgets spec).
+// Designed here with full Studio styling (incl. glyph motifs the server can't
+// draw), exported with {TOKEN} placeholders; the CrestWall widget-svg Edge
+// Function substitutes live values at each refresh. sample=true renders
+// today's values for on-screen preview.
+// ---------------------------------------------------------------------------
+export function despiaWidgetSvg(style, opts = {}) {
+  const W = 360, H = 169;
+  const s = style;
+  const sample = !!opts.sample;
+  const now = new Date();
+  const tok = sample
+    ? {
+        WEEKDAY: now.toLocaleDateString('en-US', { weekday: 'long' }),
+        DAY: String(now.getDate()),
+        MONTH: now.toLocaleDateString('en-US', { month: 'long' }),
+      }
+    : { WEEKDAY: '{WEEKDAY}', DAY: '{DAY}', MONTH: '{MONTH}' };
+
+  let defs = '';
+  let fill = s.c1;
+  if (s.bgType === 'linear') {
+    const a = ((s.angle || 0) * Math.PI) / 180;
+    const x2 = 50 + Math.sin(a) * 50;
+    const y2 = 50 - Math.cos(a) * 50;
+    defs += `<linearGradient id="dbg" x1="${100 - x2}%" y1="${100 - y2}%" x2="${x2}%" y2="${y2}%">
+      <stop offset="0%" stop-color="${s.c1}"/><stop offset="100%" stop-color="${s.c2}"/></linearGradient>`;
+    fill = 'url(#dbg)';
+  } else if (s.bgType === 'radial') {
+    defs += `<radialGradient id="dbg" cx="50%" cy="30%" r="95%">
+      <stop offset="0%" stop-color="${s.c1}"/><stop offset="100%" stop-color="${s.c2}"/></radialGradient>`;
+    fill = 'url(#dbg)';
+  }
+  let body = `<rect width="${W}" height="${H}" fill="${fill}"/>`;
+  if (s.pattern && s.pattern !== 'none') {
+    let inner = '';
+    if (s.pattern === 'dots') inner = `<circle cx="6.5" cy="6.5" r="1.2" fill="${s.glyphColor}"/>`;
+    else if (s.pattern === 'stripes')
+      inner = `<path d="M -13 26 L 26 -13 M 0 26 L 26 0" stroke="${s.glyphColor}" stroke-width="1"/>`;
+    else inner = `<path d="M 13 0 V 13 M 0 13 H 13" stroke="${s.glyphColor}" stroke-width="0.8"/>`;
+    defs += `<pattern id="dpt" width="13" height="13" patternUnits="userSpaceOnUse">${inner}</pattern>`;
+    body += `<rect width="${W}" height="${H}" fill="url(#dpt)" opacity="0.12"/>`;
+  }
+
+  const dim = 0.65;
+  const type = opts.type ?? 'date';
+  if (type === 'date') {
+    body += `
+      <text x="24" y="52" font-family="-apple-system, 'SF Pro Display', sans-serif" font-size="17"
+        font-weight="600" fill="${s.glyphColor}" fill-opacity="${dim}">${tok.WEEKDAY}</text>
+      <text x="22" y="118" font-family="-apple-system, 'SF Pro Display', sans-serif" font-size="64"
+        font-weight="700" fill="${s.glyphColor}">${tok.DAY}</text>
+      <text x="24" y="146" font-family="-apple-system, 'SF Pro Display', sans-serif" font-size="17"
+        font-weight="500" fill="${s.glyphColor}" fill-opacity="${dim}">${tok.MONTH}</text>`;
+    if (opts.glyph) {
+      const box = 74;
+      body += `<g opacity="0.85">${glyphLayer(opts.glyph, s, box, W - box - 28, (H - box) / 2)}</g>`;
+    }
+  } else if (type === 'quote') {
+    const lines = String(opts.text ?? 'make it yours').split('\n').filter(Boolean).slice(0, 3);
+    const fs = Math.min(26, lines.length > 1 ? 22 : 26);
+    const y0 = H / 2 - ((lines.length - 1) * fs * 1.3) / 2 + fs * 0.35;
+    body += lines
+      .map(
+        (l, i) => `<text x="${W / 2}" y="${y0 + i * fs * 1.3}" text-anchor="middle"
+        font-family="Georgia, serif" font-style="italic" font-size="${fs}"
+        fill="${s.glyphColor}">${l.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</text>`
+      )
+      .join('');
+  } else if (opts.glyph) {
+    const box = 84;
+    body += `<g opacity="0.9">${glyphLayer(opts.glyph, s, box, (W - box) / 2, (H - box) / 2)}</g>`;
+  }
+  if (s.ring) {
+    body += `<rect x="10" y="10" width="${W - 20}" height="${H - 20}" rx="16" fill="none"
+      stroke="${s.glyphColor}" stroke-opacity="0.35" stroke-width="1.5"/>`;
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+  <defs>${defs}</defs>${body}</svg>`;
+}
+
+// ---------------------------------------------------------------------------
 // Home-screen mockup PNG (App Store / listing marketing shots)
 // ---------------------------------------------------------------------------
 

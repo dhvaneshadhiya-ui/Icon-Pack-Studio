@@ -124,21 +124,68 @@ export function render(url: URL): string {
   <defs>${defs}</defs>${body}${content}</svg>`;
 }
 
-Deno.serve((req: Request) => {
+// ---------------------------------------------------------------------------
+// Template mode: Studio-designed live widgets, pushed to Lovable as data.
+// The Studio exports a full 360x169 SVG with {TOKEN} placeholders; it is
+// uploaded to the public packs bucket as packs/<slug>/widget-template.svg.
+// Each refresh: fetch template, substitute live values, serve. No code
+// change is ever needed for a new widget design.
+// ---------------------------------------------------------------------------
+const TEMPLATE_BASE =
+  Deno.env.get('PACKS_PUBLIC_BASE') ??
+  `${Deno.env.get('SUPABASE_URL') ?? ''}/storage/v1/object/public/packs`;
+
+// in-memory template cache so refreshes don't hammer Storage
+const tplCache = new Map<string, { svg: string; at: number }>();
+const TPL_TTL_MS = 5 * 60 * 1000;
+
+export function substituteTokens(tpl: string): string {
+  const now = new Date();
+  const tokens: Record<string, string> = {
+    WEEKDAY: now.toLocaleDateString('en-US', { weekday: 'long' }),
+    WEEKDAY_SHORT: now.toLocaleDateString('en-US', { weekday: 'short' }),
+    DAY: String(now.getDate()),
+    MONTH: now.toLocaleDateString('en-US', { month: 'long' }),
+    MONTH_SHORT: now.toLocaleDateString('en-US', { month: 'short' }),
+    YEAR: String(now.getFullYear()),
+  };
+  // values are generated server-side (never user input), safe to inline
+  return tpl.replace(/\{([A-Z_]+)\}/g, (m, k) => tokens[k] ?? m);
+}
+
+async function templateSvg(slug: string): Promise<string | null> {
+  if (!/^[a-z0-9-]{1,64}$/.test(slug)) return null; // no path tricks
+  const hit = tplCache.get(slug);
+  if (hit && Date.now() - hit.at < TPL_TTL_MS) return substituteTokens(hit.svg);
+  const res = await fetch(`${TEMPLATE_BASE}/${slug}/widget-template.svg`);
+  if (!res.ok) return null;
+  const svg = await res.text();
+  if (!svg.trimStart().startsWith('<svg')) return null;
+  tplCache.set(slug, { svg, at: Date.now() });
+  return substituteTokens(svg);
+}
+
+const SVG_HEADERS = {
+  'Content-Type': 'image/svg+xml',
+  'Cache-Control': 'no-store',
+  'Access-Control-Allow-Origin': '*',
+};
+
+Deno.serve(async (req: Request) => {
   try {
-    const svg = render(new URL(req.url));
-    return new Response(svg, {
-      headers: {
-        'Content-Type': 'image/svg+xml',
-        'Cache-Control': 'no-store',
-        'Access-Control-Allow-Origin': '*',
-      },
-    });
+    const url = new URL(req.url);
+    const pack = url.searchParams.get('pack');
+    if (pack) {
+      const svg = await templateSvg(pack);
+      if (svg) return new Response(svg, { headers: SVG_HEADERS });
+      // fall through to parameter mode as a graceful default
+    }
+    return new Response(render(url), { headers: SVG_HEADERS });
   } catch (e) {
     console.error(e);
     return new Response('<svg xmlns="http://www.w3.org/2000/svg" width="360" height="169"/>', {
       status: 200,
-      headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'no-store' },
+      headers: SVG_HEADERS,
     });
   }
 });
