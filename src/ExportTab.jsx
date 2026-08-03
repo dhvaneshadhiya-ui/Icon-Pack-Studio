@@ -157,6 +157,19 @@ export default function ExportTab({ pack, setPack }) {
           f180.file(`${appKey(ic.label)}.png`, await renderIconPng(fi(ic), style, 180));
         }
       }
+      // widgets travel INSIDE the bundle so one folder-drag carries everything
+      // the admin importer needs (.scriptable deliberately excluded — it's a
+      // Gumroad artifact, not a CrestWall asset)
+      const bundleMotif = pack.icons.find((i) => !i.image)?.glyph;
+      const wgb = lf.folder('widgets');
+      for (const k of Object.keys(WIDGET_SIZES)) {
+        setBusy(`Lovable bundle widget: ${k}…`);
+        wgb.file(`widget-${k}.png`, await renderWidgetPng(pack.style, k, { type: 'art', glyph: bundleMotif }));
+      }
+      wgb.file(
+        'widget-template.svg',
+        despiaWidgetSvg(pack.style, { type: 'date', glyph: bundleMotif, sample: false })
+      );
       lf.file(
         'pack.json',
         JSON.stringify(
@@ -165,6 +178,8 @@ export default function ExportTab({ pack, setPack }) {
             name: pack.name,
             icon_count: pack.icons.length,
             items: pack.icons.map((ic, i) => ({ app_key: appKey(ic.label), default_label: ic.label, sort_order: i })),
+            widgets: Object.keys(WIDGET_SIZES).map((k) => `widgets/widget-${k}.png`),
+            widget_template: 'widgets/widget-template.svg',
           },
           null,
           2
