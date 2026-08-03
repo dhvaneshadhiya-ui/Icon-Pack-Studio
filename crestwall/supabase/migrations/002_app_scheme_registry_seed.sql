@@ -17,23 +17,21 @@ values
   ('notes', 'Notes', 'mobilenotes://', true, 'verified'),
   ('reminders', 'Reminders', 'x-apple-reminderkit://', true, 'verified'),
   ('weather', 'Weather', 'weather://', true, 'verified'),
-  ('calculator', 'Calculator', 'calc://', true, 'high'),
   ('wallet', 'Wallet', 'shoebox://', true, 'verified'),
   ('health', 'Health', 'x-apple-health://', true, 'verified'),
   ('app-store', 'App Store', 'itms-apps://', true, 'verified'),
   ('podcasts', 'Podcasts', 'podcasts://', true, 'verified'),
   ('facetime', 'FaceTime', 'facetime://', true, 'verified'),
   ('files', 'Files', 'shareddocuments://', true, 'verified'),
-  ('home', 'Home', 'x-hm://', true, 'high'),
   ('books', 'Books', 'ibooks://', true, 'verified'),
   ('fitness', 'Fitness', 'fitnessapp://', true, 'verified'),
-  ('find-my', 'Find My', 'findmy://', true, 'high'),
+  ('find-my', 'Find My', 'findmy://', true, 'medium'),
   ('shortcuts', 'Shortcuts', 'shortcuts://', true, 'high'),
   ('voice-memos', 'Voice Memos', 'voicememos://', true, 'medium'),
   ('stocks', 'Stocks', 'stocks://', true, 'medium'),
   ('news', 'News', 'applenews://', true, 'medium'),
   ('apple-tv', 'Apple TV', 'videos://', true, 'medium'),
-  ('freeform', 'Freeform', 'freeform://', true, 'high'),
+  ('freeform', 'Freeform', 'freeform://', true, 'medium'),
   ('instagram', 'Instagram', 'instagram://', false, 'verified'),
   ('x', 'X', 'twitter://', false, 'verified'),
   ('facebook', 'Facebook', 'fb://', false, 'verified'),
@@ -143,6 +141,5 @@ values
   ('firefox', 'Firefox', 'firefox://', false, 'high'),
   ('arc', 'Arc', 'arc://', false, 'medium')
 on conflict (app_key) do nothing;
--- DO NOTHING is deliberate: after the registry correctness pass (quarantine
--- statuses, device-test promotions, payload fixes) the live registry is the
--- source of truth. Re-running this bootstrap must never clobber curated rows.
+-- DO NOTHING is deliberate: after the registry correctness pass, the live
+-- registry is the source of truth. Never clobber curated rows.

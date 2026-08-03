@@ -44,8 +44,12 @@ in our profile at all — we exclude apps that can't work.
 > `contacts://` AND `contact://` (Contacts is Shortcuts-only),
 > `compass://`, `measure://`, `translate://`, `journal://` — the original
 > "no registered scheme" research stands for Translate/Measure/Compass/
-> Journal/Contacts. Pending explicit pass confirmation: Home `x-hm://`,
-> Calculator `calc://`, Find My `findmy://`, Freeform `freeform://`.
+> Journal/Contacts. Also dead: Home `x-hm://`, Calculator `calc://`.
+> Pattern: schemes sourced only from iOS-14-era community lists have failed
+> universally — Apple removed many stock schemes from iOS 16 onward. The 45
+> schemes from the original device-verified profile remain 100% reliable.
+> Still unconfirmed (presume dead): Find My `findmy://`, Freeform
+> `freeform://`.
 
 **Third-party apps in our catalog with no known scheme:** Epic Games, Stripe.
 
