@@ -27,7 +27,7 @@ export const URL_SCHEMES = {
   Notes: ['mobilenotes://', 'verified'],
   Reminders: ['x-apple-reminderkit://', 'verified'],
   Weather: ['weather://', 'verified'],
-  Calculator: ['calc://', 'medium'],
+  Calculator: ['calc://', 'verified'],
   Wallet: ['shoebox://', 'verified'],
   Health: ['x-apple-health://', 'verified'],
   'App Store': ['itms-apps://', 'verified'],
@@ -35,18 +35,18 @@ export const URL_SCHEMES = {
   FaceTime: ['facetime://', 'verified'], // may prompt a call on some versions
   Files: ['shareddocuments://', 'verified'],
   Books: ['ibooks://', 'verified'],
-  'Find My': ['findmy://', 'medium'],
+  'Find My': ['findmy://', 'verified'],
   Shortcuts: ['shortcuts://', 'high'],
   'Apple TV': ['videos://', 'medium'],
-  Contacts: ['contact://', 'medium'],
+  Contacts: ['contact://', 'verified'], // both contact:// and contacts:// launched on device
   'Voice Memos': ['voicememos://', 'medium'],
   Stocks: ['stocks://', 'medium'],
   News: ['applenews://', 'medium'],
   Fitness: ['fitnessapp://', 'verified'],
-  Translate: [null, null],
-  Measure: [null, null],
-  Freeform: [null, null],
-  Home: ['x-hm://', 'medium'],
+  Translate: ['translate://', 'verified'], // works on iOS 26
+  Measure: ['measure://', 'verified'], // works on iOS 26
+  Freeform: ['freeform://', 'verified'], // works on iOS 26
+  Home: ['x-hm://', 'verified'],
 
   // ---- Social -------------------------------------------------------------
   Instagram: ['instagram://', 'verified'], // confirmed in the wild
@@ -86,7 +86,7 @@ export const URL_SCHEMES = {
   Plex: ['plex://', 'medium'],
   VLC: ['vlc://', 'medium'],
   Steam: ['steam://', 'medium'],
-  PlayStation: ['playstationapp://', 'medium'],
+  PlayStation: [null, null], // playstationapp:// FAILED device test 2026-08-03 — https fallback only
   'Epic Games': [null, null],
   Roblox: ['roblox://', 'medium'],
   Kindle: ['kindle://', 'medium'],
@@ -127,7 +127,7 @@ export const URL_SCHEMES = {
   'Google Pay': ['gpay://', 'medium'],
   Paytm: ['paytm://', 'high'],
   PhonePe: ['phonepe://', 'high'],
-  Wise: ['wise://', 'medium'],
+  Wise: ['transferwise://', 'medium'], // wise:// FAILED device test 2026-08-03; legacy-name scheme is the remaining candidate
   Revolut: ['revolut://', 'medium'],
   Coinbase: ['coinbase://', 'medium'],
   Binance: ['binance://', 'medium'],
@@ -140,7 +140,7 @@ export const URL_SCHEMES = {
   Etsy: ['etsy://', 'medium'],
   AliExpress: ['aliexpress://', 'medium'],
   Flipkart: ['flipkart://', 'high'],
-  Shein: ['shein://', 'medium'],
+  Shein: [null, null], // shein:// FAILED device test 2026-08-03 — https fallback only
   Temu: ['temu://', 'medium'],
   Myntra: ['myntra://', 'medium'],
   'Uber Eats': ['ubereats://', 'high'],
