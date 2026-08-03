@@ -286,6 +286,38 @@ generator skips them and reports which were skipped. Design packs knowing
   badges (notification dots) don't show on web clips; original icons should be
   hidden in App Library manually.
 
+## 5b. Home Screen widgets (Despia Home Widgets — real widgets, corrected)
+
+Earlier drafts said the wrapper can't ship widgets. **Wrong**: Despia has a
+[Home Widgets module](https://setup.despia.com/native-features/home-widgets),
+and its model fits our stack perfectly — the widget is a **remote SVG** that
+iOS re-fetches on an interval:
+
+```
+widget://https://crestwall.app/w?type=date&c1=%230B0D12&…&refresh=30
+```
+
+- Endpoint built: `crestwall/supabase/functions/widget-svg/` — stateless
+  (palette rides in the query string, baked in when the user picks a pack),
+  returns `image/svg+xml` + `Cache-Control: no-store`, all inputs XML-escaped
+  and hex-validated. Types: `date` (re-renders with current date each
+  refresh), `quote` (`|` = line break), `art`. Canvas fixed 360×169 per
+  Despia's spec.
+- UX: pack detail page gains "Add matching widget" → pick type → app
+  registers the `widget://` URL via the scheme. Theme switch = re-register
+  with the new palette params.
+- **One-time native setup required** (NOT OTA): App Groups + bundle id in
+  Apple Developer, enable the widget target in the Despia Editor, rebuild and
+  resubmit the binary once. After that, widget designs/content are fully
+  server-driven.
+- Constraints (from Despia docs): iOS only; fixed size; keep SVG simple (CSS
+  animation ignored); refresh interval is a minimum, iOS may stretch it under
+  battery pressure — so no clocks, dates are the finest safe granularity;
+  data:/blob: URLs rejected (must be plain HTTPS).
+
+Widgets for people *without* CrestWall (Gumroad buyers) remain the static
+PNG + Scriptable route the Studio's Widgets tab exports.
+
 ## 6. Analytics & KPIs (PostHog is already connected)
 
 Events: `pack_viewed`, `pack_download_started/completed` (with icon_count),
