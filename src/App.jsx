@@ -4,6 +4,7 @@ import { iconSvg } from './svg.js';
 import DesignTab from './DesignTab.jsx';
 import PreviewTab from './PreviewTab.jsx';
 import WallpapersTab from './WallpapersTab.jsx';
+import WidgetsTab from './WidgetsTab.jsx';
 import AITab from './AITab.jsx';
 import ExportTab from './ExportTab.jsx';
 
@@ -19,6 +20,7 @@ const TABS = [
   ['design', 'Design'],
   ['preview', 'Preview'],
   ['wallpapers', 'Wallpapers'],
+  ['widgets', 'Widgets'],
   ['ai', 'AI Generate'],
   ['export', 'Export'],
 ];
@@ -76,6 +78,7 @@ export default function App() {
       )}
       {tab === 'preview' && <PreviewTab pack={pack} />}
       {tab === 'wallpapers' && <WallpapersTab pack={pack} />}
+      {tab === 'widgets' && <WidgetsTab pack={pack} />}
       {tab === 'ai' && <AITab pack={pack} updateIcon={updateIcon} />}
       {tab === 'export' && <ExportTab pack={pack} setPack={setPack} />}
     </div>

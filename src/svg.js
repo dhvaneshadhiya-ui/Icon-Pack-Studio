@@ -101,6 +101,30 @@ function glyphMarkup(name) {
     .join('');
 }
 
+// Draw a glyph (lucide stroke / brand fill / Arcticons stroke) into a box at
+// (tx, ty). Shared by icon tiles and widget art.
+export function glyphLayer(glyphName, s, box, tx, ty, glyphFilter = '', colorOverride) {
+  const color = colorOverride ?? s.glyphColor;
+  const brand = isBrand(glyphName) ? brandOf(glyphName) : null;
+  const appG = isAppGlyph(glyphName) ? appGlyphOf(glyphName) : null;
+  if (appG) {
+    // Arcticons body: 48x48 viewBox, stroke="currentColor", no stroke-width
+    const k = box / 48;
+    const rot = s.rotation ? `<g transform="rotate(${s.rotation} 24 24)">` : '<g>';
+    return `<g transform="translate(${tx} ${ty}) scale(${k})"${glyphFilter} color="${color}"
+      fill="none" stroke-width="${(s.strokeWidth ?? 2) * 1.4}" stroke-linecap="round" stroke-linejoin="round">${rot}${appG.body}</g></g>`;
+  }
+  const k = box / 24;
+  const rot = s.rotation ? `<g transform="rotate(${s.rotation} 12 12)">` : '<g>';
+  const body = brand
+    ? `${rot}<path d="${brand.path}" fill="${color}"/></g>`
+    : `${rot}${glyphMarkup(glyphName)}</g>`;
+  return brand
+    ? `<g transform="translate(${tx} ${ty}) scale(${k})"${glyphFilter}>${body}</g>`
+    : `<g transform="translate(${tx} ${ty}) scale(${k})"${glyphFilter} fill="none" stroke="${color}"
+    stroke-width="${s.strokeWidth ?? 2}" stroke-linecap="round" stroke-linejoin="round">${body}</g>`;
+}
+
 // Full SVG for one icon tile. `uidStr` keeps defs ids unique when many SVGs
 // are inlined on the same page.
 export function iconSvg(icon, style, size = 1024, uidStr = 'x') {
@@ -144,25 +168,7 @@ export function iconSvg(icon, style, size = 1024, uidStr = 'x') {
   } else {
     const box = S * (s.glyphScale ?? 0.5);
     const t = (S - box) / 2;
-    const brand = isBrand(icon.glyph) ? brandOf(icon.glyph) : null;
-    const appG = isAppGlyph(icon.glyph) ? appGlyphOf(icon.glyph) : null;
-    if (appG) {
-      // Arcticons body: 48x48 viewBox, stroke="currentColor", no stroke-width
-      const k = box / 48;
-      const rot = s.rotation ? `<g transform="rotate(${s.rotation} 24 24)">` : '<g>';
-      content = `<g transform="translate(${t} ${t}) scale(${k})"${glyphFilter} color="${s.glyphColor}"
-        fill="none" stroke-width="${(s.strokeWidth ?? 2) * 1.4}" stroke-linecap="round" stroke-linejoin="round">${rot}${appG.body}</g></g>`;
-    } else {
-      const k = box / 24;
-      const rot = s.rotation ? `<g transform="rotate(${s.rotation} 12 12)">` : '<g>';
-      const body = brand
-        ? `${rot}<path d="${brand.path}" fill="${s.glyphColor}"/></g>`
-        : `${rot}${glyphMarkup(icon.glyph)}</g>`;
-      content = brand
-        ? `<g transform="translate(${t} ${t}) scale(${k})"${glyphFilter}>${body}</g>`
-        : `<g transform="translate(${t} ${t}) scale(${k})"${glyphFilter} fill="none" stroke="${s.glyphColor}"
-      stroke-width="${s.strokeWidth ?? 2}" stroke-linecap="round" stroke-linejoin="round">${body}</g>`;
-    }
+    content = glyphLayer(icon.glyph, s, box, t, t, glyphFilter);
   }
 
   let overlay = '';
@@ -286,6 +292,89 @@ export function wallpaperSvg(style, variant, W = 2160, H = 3840, uidStr = 'wp') 
 
 export async function renderWallpaperPng(style, variant, W = 2160, H = 3840) {
   return svgToPng(wallpaperSvg(style, variant, W, H, `wp-${variant}`), W, H);
+}
+
+// ---------------------------------------------------------------------------
+// Widgets — static designs installed via photo-widget apps (Widgetsmith,
+// WidgetClub). Full-bleed; the host app applies iOS's rounded mask.
+// ---------------------------------------------------------------------------
+
+export const WIDGET_SIZES = {
+  small: { w: 800, h: 800 },
+  medium: { w: 1704, h: 800 },
+  large: { w: 1704, h: 1800 },
+};
+
+// opts: { type: 'art' | 'quote', glyph?: string, text?: string }
+export function widgetSvg(style, sizeKey, opts = {}, uidStr = 'wg') {
+  const { w: W, h: H } = WIDGET_SIZES[sizeKey] ?? WIDGET_SIZES.small;
+  const s = style;
+  const gid = `bg-${uidStr}`;
+  let defs = '';
+  let bgFill = s.c1;
+  if (s.bgType === 'linear') {
+    const a = ((s.angle || 0) * Math.PI) / 180;
+    const x2 = 50 + Math.sin(a) * 50;
+    const y2 = 50 - Math.cos(a) * 50;
+    defs += `<linearGradient id="${gid}" x1="${100 - x2}%" y1="${100 - y2}%" x2="${x2}%" y2="${y2}%">
+      <stop offset="0%" stop-color="${s.c1}"/><stop offset="100%" stop-color="${s.c2}"/></linearGradient>`;
+    bgFill = `url(#${gid})`;
+  } else if (s.bgType === 'radial') {
+    defs += `<radialGradient id="${gid}" cx="50%" cy="30%" r="95%">
+      <stop offset="0%" stop-color="${s.c1}"/><stop offset="100%" stop-color="${s.c2}"/></radialGradient>`;
+    bgFill = `url(#${gid})`;
+  }
+
+  let body = `<rect width="${W}" height="${H}" fill="${bgFill}"/>`;
+
+  // pattern overlay (same recipe as icon tiles, scaled to the short edge)
+  const short = Math.min(W, H);
+  if (s.pattern && s.pattern !== 'none') {
+    const u = short * 0.075;
+    let inner = '';
+    if (s.pattern === 'dots') inner = `<circle cx="${u / 2}" cy="${u / 2}" r="${short * 0.007}" fill="${s.glyphColor}"/>`;
+    else if (s.pattern === 'stripes')
+      inner = `<path d="M ${-u} ${u * 2} L ${u * 2} ${-u}" stroke="${s.glyphColor}" stroke-width="${short * 0.006}"/>
+               <path d="M 0 ${u * 2} L ${u * 2} 0" stroke="${s.glyphColor}" stroke-width="${short * 0.006}"/>`;
+    else inner = `<path d="M ${u} 0 V ${u} M 0 ${u} H ${u}" stroke="${s.glyphColor}" stroke-width="${short * 0.005}"/>`;
+    defs += `<pattern id="pt-${uidStr}" width="${u}" height="${u}" patternUnits="userSpaceOnUse">${inner}</pattern>`;
+    body += `<rect width="${W}" height="${H}" fill="url(#pt-${uidStr})" opacity="0.13"/>`;
+  }
+
+  if (opts.type === 'quote' && opts.text) {
+    const lines = String(opts.text).split('\n').filter(Boolean);
+    const fs = Math.min(short * 0.11, (H * 0.6) / Math.max(lines.length, 1));
+    const y0 = H / 2 - ((lines.length - 1) * fs * 1.25) / 2;
+    for (let i = 0; i < lines.length; i++) {
+      body += `<text x="${W / 2}" y="${y0 + i * fs * 1.25}" text-anchor="middle" dominant-baseline="middle"
+        font-family="Georgia, 'Times New Roman', serif" font-style="italic" font-size="${fs}"
+        fill="${s.glyphColor}">${lines[i].replace(/&/g, '&amp;').replace(/</g, '&lt;')}</text>`;
+    }
+  } else if (opts.glyph) {
+    // art: one large motif glyph, subtle, centered
+    const box = short * 0.5;
+    body += `<g opacity="0.9">${glyphLayer(opts.glyph, s, box, (W - box) / 2, (H - box) / 2)}</g>`;
+  }
+
+  if (s.grain) {
+    defs += `<filter id="gn-${uidStr}">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/></filter>`;
+    body += `<rect width="${W}" height="${H}" filter="url(#gn-${uidStr})" opacity="0.06"/>`;
+  }
+  if (s.ring) {
+    const inset = short * 0.035;
+    body += `<rect x="${inset}" y="${inset}" width="${W - 2 * inset}" height="${H - 2 * inset}"
+      rx="${short * 0.09}" fill="none" stroke="${s.glyphColor}" stroke-opacity="0.4" stroke-width="${Math.max(1, short * 0.006)}"/>`;
+  }
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+    <defs>${defs}</defs>${body}</svg>`;
+}
+
+export async function renderWidgetPng(style, sizeKey, opts = {}) {
+  const { w, h } = WIDGET_SIZES[sizeKey] ?? WIDGET_SIZES.small;
+  return svgToPng(widgetSvg(style, sizeKey, opts, `wgx-${sizeKey}`), w, h);
 }
 
 // ---------------------------------------------------------------------------

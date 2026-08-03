@@ -1,10 +1,12 @@
 import React, { useRef, useState } from 'react';
 import JSZip from 'jszip';
 import {
-  renderIconPng, renderCoverPng, renderWallpaperPng, renderMockupPng, WALLPAPER_VARIANTS,
+  renderIconPng, renderCoverPng, renderWallpaperPng, renderMockupPng, renderWidgetPng,
+  WALLPAPER_VARIANTS, WIDGET_SIZES,
   darkStyle, darkIcon, monoStyle, monoIcon, shade,
 } from './svg.js';
 import { buildMobileConfig } from './mobileconfig.js';
+import { scriptableWidget } from './scriptable.js';
 
 const sanitize = (s) => s.replace(/[^\w\- ]/g, '').trim().replace(/\s+/g, '-') || 'icon';
 
@@ -34,6 +36,10 @@ WHAT'S INSIDE
 - icons-dark/      dark-mode variant (if included)
 - icons-mono/      monochrome variant (if included)
 - wallpapers/      matching 4K wallpapers (if included)
+- widgets/         matching widget images + a live Scriptable widget
+                   (PNGs: use any photo-widget app like Widgetsmith or
+                   WidgetClub; .scriptable: import into the free Scriptable
+                   app, then add a Scriptable widget to your Home Screen)
 - preview-homescreen.png   how the pack looks applied (if included)
 
 NOTES
@@ -60,7 +66,7 @@ function download(blob, filename) {
 
 export default function ExportTab({ pack, setPack }) {
   const [sizes, setSizes] = useState({ 1024: true, 512: false, 256: false });
-  const [extras, setExtras] = useState({ cover: true, readme: true, wallpapers: true, mockup: true, manifest: true, profile: false, lovable: false });
+  const [extras, setExtras] = useState({ cover: true, readme: true, wallpapers: true, widgets: true, mockup: true, manifest: true, profile: false, lovable: false });
   const [variants, setVariants] = useState({ dark: false, mono: false });
   const [baseUrl, setBaseUrl] = useState('');
   const [busy, setBusy] = useState('');
@@ -101,6 +107,16 @@ export default function ExportTab({ pack, setPack }) {
         setBusy(`Rendering wallpaper: ${v}…`);
         wf.file(`Wallpaper-${v}.png`, await renderWallpaperPng(pack.style, v));
       }
+    }
+    if (extras.widgets) {
+      const wgf = root.folder('widgets');
+      const motif = pack.icons.find((i) => !i.image)?.glyph;
+      for (const k of Object.keys(WIDGET_SIZES)) {
+        setBusy(`Rendering widget: ${k}…`);
+        wgf.file(`widget-${k}.png`, await renderWidgetPng(pack.style, k, { type: 'art', glyph: motif }));
+      }
+      const sw = scriptableWidget(pack);
+      wgf.file(sw.filename, sw.content);
     }
     if (extras.mockup) {
       setBusy('Rendering home-screen preview…');
@@ -264,6 +280,9 @@ export default function ExportTab({ pack, setPack }) {
           </label>
           <label>
             <input type="checkbox" checked={extras.wallpapers} onChange={() => toggle(extras, setExtras, 'wallpapers')} /> 4K wallpapers (4)
+          </label>
+          <label>
+            <input type="checkbox" checked={extras.widgets} onChange={() => toggle(extras, setExtras, 'widgets')} /> Widgets (3 + live)
           </label>
           <label>
             <input type="checkbox" checked={extras.mockup} onChange={() => toggle(extras, setExtras, 'mockup')} /> Home-screen preview
