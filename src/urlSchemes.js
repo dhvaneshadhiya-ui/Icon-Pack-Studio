@@ -27,7 +27,7 @@ export const URL_SCHEMES = {
   Notes: ['mobilenotes://', 'verified'],
   Reminders: ['x-apple-reminderkit://', 'verified'],
   Weather: ['weather://', 'verified'],
-  Calculator: ['calc://', 'verified'],
+  Calculator: ['calc://', 'high'], // not in failure reports; awaiting explicit pass confirmation
   Wallet: ['shoebox://', 'verified'],
   Health: ['x-apple-health://', 'verified'],
   'App Store': ['itms-apps://', 'verified'],
@@ -35,18 +35,18 @@ export const URL_SCHEMES = {
   FaceTime: ['facetime://', 'verified'], // may prompt a call on some versions
   Files: ['shareddocuments://', 'verified'],
   Books: ['ibooks://', 'verified'],
-  'Find My': ['findmy://', 'verified'],
+  'Find My': ['findmy://', 'high'], // not in failure reports; awaiting explicit pass confirmation
   Shortcuts: ['shortcuts://', 'high'],
   'Apple TV': ['videos://', 'medium'],
-  Contacts: ['contact://', 'verified'], // both contact:// and contacts:// launched on device
+  Contacts: [null, null], // BOTH contact:// and contacts:// failed device test 2026-08-03 — Shortcuts-only
   'Voice Memos': ['voicememos://', 'medium'],
   Stocks: ['stocks://', 'medium'],
   News: ['applenews://', 'medium'],
   Fitness: ['fitnessapp://', 'verified'],
-  Translate: ['translate://', 'verified'], // works on iOS 26
-  Measure: ['measure://', 'verified'], // works on iOS 26
-  Freeform: ['freeform://', 'verified'], // works on iOS 26
-  Home: ['x-hm://', 'verified'],
+  Translate: [null, null], // translate:// failed device test 2026-08-03
+  Measure: [null, null], // measure:// failed device test 2026-08-03
+  Freeform: ['freeform://', 'high'], // not in failure reports; awaiting explicit pass confirmation
+  Home: ['x-hm://', 'high'], // not in failure reports; awaiting explicit pass confirmation
 
   // ---- Social -------------------------------------------------------------
   Instagram: ['instagram://', 'verified'], // confirmed in the wild

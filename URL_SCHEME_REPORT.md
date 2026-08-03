@@ -39,12 +39,13 @@ in our profile at all — we exclude apps that can't work.
 | **Safari** | No scheme. (`http://` links open *a page*, not the browser app cleanly) |
 | **Camera** | No working scheme — see §3, Brass ships a dead icon for it |
 
-> **Addendum (3 Aug 2026, device tap-test, iOS 26):** Translate
-> (`translate://`), Measure (`measure://`) and Freeform (`freeform://`) —
-> listed as impossible at the time of writing — now launch correctly and are
-> device-verified. Also verified: Home `x-hm://`, Calculator `calc://`,
-> Find My `findmy://`, Contacts `contact://`. Confirmed dead on device:
-> `tips://`, `wise://`, `shein://`, `playstationapp://`.
+> **Addendum (3 Aug 2026, device tap-test, iOS 26).** Confirmed dead on
+> device: `tips://`, `wise://`, `shein://`, `playstationapp://`,
+> `contacts://` AND `contact://` (Contacts is Shortcuts-only),
+> `compass://`, `measure://`, `translate://`, `journal://` — the original
+> "no registered scheme" research stands for Translate/Measure/Compass/
+> Journal/Contacts. Pending explicit pass confirmation: Home `x-hm://`,
+> Calculator `calc://`, Find My `findmy://`, Freeform `freeform://`.
 
 **Third-party apps in our catalog with no known scheme:** Epic Games, Stripe.
 
