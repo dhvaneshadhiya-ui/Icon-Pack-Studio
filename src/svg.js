@@ -313,10 +313,7 @@ export function mockupSvg(pack, wall, opts = {}) {
   let defs = `<linearGradient id="wall" x1="0%" y1="0%" x2="60%" y2="100%">
     <stop offset="0%" stop-color="${wall.c1}"/><stop offset="100%" stop-color="${wall.c2}"/></linearGradient>`;
   let body = `<rect width="${W}" height="${H}" fill="url(#wall)"/>`;
-
-  // status bar
-  body += `<text x="${W * 0.12}" y="${H * 0.045}" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif"
-    font-size="${W * 0.042}" font-weight="600" fill="#ffffff">9:41</text>`;
+  // no status-bar chrome — icons (and dock) only
 
   const T = W * 0.14;
   const margin = W * 0.077;

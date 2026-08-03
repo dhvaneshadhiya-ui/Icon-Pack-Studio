@@ -13,11 +13,11 @@
 
 export const URL_SCHEMES = {
   // ---- Apple / system -----------------------------------------------------
-  Phone: ['mobilephone://', 'verified'],
+  Phone: ['mobilephone://', 'verified'], // Brass uses bare tel: which is for dialing numbers, not opening the app
   Messages: ['messages://', 'verified'], // confirmed in the wild
   Mail: ['message://', 'verified'],
   Safari: [null, null], // no scheme — Safari cannot be opened by URL scheme
-  Camera: [null, null], // camera:// is unreliable/removed
+  Camera: [null, null], // NO working scheme — Brass ships camera:// anyway and that icon does nothing (user-observed)
   Photos: ['photos-redirect://', 'verified'],
   Settings: ['App-prefs://', 'verified'],
   Maps: ['maps://', 'verified'],
@@ -27,7 +27,7 @@ export const URL_SCHEMES = {
   Notes: ['mobilenotes://', 'verified'],
   Reminders: ['x-apple-reminderkit://', 'verified'],
   Weather: ['weather://', 'verified'],
-  Calculator: [null, null],
+  Calculator: ['calc://', 'medium'],
   Wallet: ['shoebox://', 'verified'],
   Health: ['x-apple-health://', 'verified'],
   'App Store': ['itms-apps://', 'verified'],
@@ -35,10 +35,10 @@ export const URL_SCHEMES = {
   FaceTime: ['facetime://', 'verified'], // may prompt a call on some versions
   Files: ['shareddocuments://', 'verified'],
   Books: ['ibooks://', 'verified'],
-  'Find My': ['fmip1://', 'medium'],
+  'Find My': ['findmy://', 'medium'],
   Shortcuts: ['shortcuts://', 'high'],
   'Apple TV': ['videos://', 'medium'],
-  Contacts: ['contacts://', 'medium'],
+  Contacts: ['contact://', 'medium'],
   'Voice Memos': ['voicememos://', 'medium'],
   Stocks: ['stocks://', 'medium'],
   News: ['applenews://', 'medium'],
@@ -46,7 +46,7 @@ export const URL_SCHEMES = {
   Translate: [null, null],
   Measure: [null, null],
   Freeform: [null, null],
-  Home: [null, null],
+  Home: ['x-hm://', 'medium'],
 
   // ---- Social -------------------------------------------------------------
   Instagram: ['instagram://', 'verified'], // confirmed in the wild
