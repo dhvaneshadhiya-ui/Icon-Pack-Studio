@@ -301,6 +301,15 @@ export function auditTrademarks(pack) {
   return { swappable, residual };
 }
 
+// Generic icons ship without a target app by design — the buyer points them
+// at their own choice via Shortcuts. Importers must not demand a registry
+// match for these.
+export const GENERIC_LABELS = new Set([
+  'Banking', 'Crypto', 'Shopping', 'Flights', 'Trains', 'Car', 'Meditation',
+  'Period Tracker', 'Sleep', 'Water', 'Running', 'Authenticator', 'Scanner',
+  'Flashlight', 'QR Reader', 'Email', 'Browser',
+]);
+
 export function makeIcon(label, glyph, fallback) {
   return {
     id: uid(),

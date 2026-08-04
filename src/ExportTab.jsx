@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import JSZip from 'jszip';
+import { GENERIC_LABELS } from './model.js';
 import {
   renderIconPng, renderCoverPng, renderWallpaperPng, renderMockupPng, renderWidgetPng,
   despiaWidgetSvg, WALLPAPER_VARIANTS, WIDGET_SIZES,
@@ -177,7 +178,15 @@ export default function ExportTab({ pack, setPack }) {
             slug: sanitize(pack.name).toLowerCase(),
             name: pack.name,
             icon_count: pack.icons.length,
-            items: pack.icons.map((ic, i) => ({ app_key: appKey(ic.label), default_label: ic.label, sort_order: i })),
+            items: pack.icons.map((ic, i) => ({
+              app_key: appKey(ic.label),
+              default_label: ic.label,
+              sort_order: i,
+              // 'generic' = intentionally app-less; importers must not require
+              // a registry match (these feed the manual-finish / choose-your-
+              // own-app flow, not the profile)
+              kind: GENERIC_LABELS.has(ic.label) ? 'generic' : 'app',
+            })),
             widgets: Object.keys(WIDGET_SIZES).map((k) => `widgets/widget-${k}.png`),
             widget_template: 'widgets/widget-template.svg',
           },
