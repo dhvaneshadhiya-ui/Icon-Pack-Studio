@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { WIDGET_SIZES, widgetSvg, renderWidgetPng, despiaWidgetSvg, downloadBlob } from './svg.js';
-import { scriptableWidget } from './scriptable.js';
+import { scriptableWidget, scriptableLauncherWidget } from './scriptable.js';
+import { schemeFor } from './urlSchemes.js';
 
 const sanitize = (s) => s.replace(/[^\w\- ]/g, '').trim().replace(/\s+/g, '-') || 'pack';
 
@@ -47,6 +48,21 @@ export default function WidgetsTab({ pack }) {
 
   const glyphChoices = [...new Set(pack.icons.filter((i) => !i.image).map((i) => i.glyph))];
 
+  const launcherTargets = useMemo(() => {
+    const out = [];
+    const seen = new Set();
+    for (const ic of pack.icons) {
+      if (seen.has(ic.label)) continue;
+      const s = schemeFor(ic.label);
+      if (s && (s.confidence === 'verified' || s.confidence === 'high')) {
+        out.push({ label: ic.label, scheme: s.url });
+        seen.add(ic.label);
+      }
+      if (out.length === 4) break;
+    }
+    return out;
+  }, [pack.icons]);
+
   return (
     <div className="main">
       <div className="sidebar">
@@ -87,6 +103,22 @@ export default function WidgetsTab({ pack }) {
           A real clock/date/battery widget in this pack's palette, for the free
           Scriptable app. Static PNGs below install via Widgetsmith or
           WidgetClub photo widgets.
+        </p>
+        <h3>Launcher widget</h3>
+        <button
+          className="btn primary"
+          disabled={launcherTargets.length === 0}
+          onClick={() => {
+            const { filename, content } = scriptableLauncherWidget(pack, launcherTargets);
+            downloadBlob(new Blob([content], { type: 'application/json' }), filename);
+          }}
+        >
+          Download launcher widget
+        </button>
+        <p className="note">
+          {launcherTargets.length > 0
+            ? `Medium Scriptable widget with tappable buttons — each opens a different app: ${launcherTargets.map((t) => t.label).join(', ')}. Uses the first 4 launch-verified apps in the pack.`
+            : 'Add apps with verified launch schemes to enable the launcher.'}
         </p>
       </div>
       <div className="content">
