@@ -144,10 +144,13 @@ export default function ExportTab({ pack, setPack }) {
       // uploader ("folder of PNGs named instagram.png") and needs no
       // server-side resizing.
       const appKey = (l) => l.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      // bundle honors the Appearance Variants checkboxes: light always ships,
+      // dark/mono only when selected — so per-pack you control which styles
+      // exist in CrestWall
       const styleSets = [
         ['light', (s) => s, (i) => i],
-        ['dark', darkStyle, darkIcon],
-        ['mono', monoStyle, monoIcon],
+        ...(variants.dark ? [['dark', darkStyle, darkIcon]] : []),
+        ...(variants.mono ? [['mono', monoStyle, monoIcon]] : []),
       ];
       const lf = root.folder('lovable-bundle');
       let ldone = 0;
@@ -165,17 +168,20 @@ export default function ExportTab({ pack, setPack }) {
       }
       // widgets travel INSIDE the bundle so one folder-drag carries everything
       // the admin importer needs (.scriptable deliberately excluded — it's a
-      // Gumroad artifact, not a CrestWall asset)
+      // Gumroad artifact, not a CrestWall asset). Gated on the Widgets
+      // checkbox so widget-less packs are possible.
       const bundleMotif = pack.icons.find((i) => !i.image)?.glyph;
-      const wgb = lf.folder('widgets');
-      for (const k of Object.keys(WIDGET_SIZES)) {
-        setBusy(`Lovable bundle widget: ${k}…`);
-        wgb.file(`widget-${k}.png`, await renderWidgetPng(pack.style, k, { type: 'art', glyph: bundleMotif }));
+      if (extras.widgets) {
+        const wgb = lf.folder('widgets');
+        for (const k of Object.keys(WIDGET_SIZES)) {
+          setBusy(`Lovable bundle widget: ${k}…`);
+          wgb.file(`widget-${k}.png`, await renderWidgetPng(pack.style, k, { type: 'art', glyph: bundleMotif }));
+        }
+        wgb.file(
+          'widget-template.svg',
+          despiaWidgetSvg(pack.style, { type: 'date', glyph: bundleMotif, sample: false })
+        );
       }
-      wgb.file(
-        'widget-template.svg',
-        despiaWidgetSvg(pack.style, { type: 'date', glyph: bundleMotif, sample: false })
-      );
       lf.file(
         'pack.json',
         JSON.stringify(
@@ -183,6 +189,8 @@ export default function ExportTab({ pack, setPack }) {
             slug: sanitize(pack.name).toLowerCase(),
             name: pack.name,
             icon_count: pack.icons.length,
+            styles: ['light', ...(variants.dark ? ['dark'] : []), ...(variants.mono ? ['mono'] : [])],
+            has_widgets: !!extras.widgets,
             items: pack.icons.map((ic, i) => ({
               app_key: appKey(ic.label),
               default_label: ic.label,
@@ -192,8 +200,12 @@ export default function ExportTab({ pack, setPack }) {
               // own-app flow, not the profile)
               kind: GENERIC_LABELS.has(ic.label) ? 'generic' : 'app',
             })),
-            widgets: Object.keys(WIDGET_SIZES).map((k) => `widgets/widget-${k}.png`),
-            widget_template: 'widgets/widget-template.svg',
+            ...(extras.widgets
+              ? {
+                  widgets: Object.keys(WIDGET_SIZES).map((k) => `widgets/widget-${k}.png`),
+                  widget_template: 'widgets/widget-template.svg',
+                }
+              : {}),
           },
           null,
           2

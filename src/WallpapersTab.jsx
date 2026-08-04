@@ -35,6 +35,15 @@ function WallpaperCard({ pack, variant }) {
 }
 
 export default function WallpapersTab({ pack }) {
+  const [busyAll, setBusyAll] = useState('');
+  const dlAll = async () => {
+    for (const v of WALLPAPER_VARIANTS) {
+      setBusyAll(v);
+      const png = await renderWallpaperPng(pack.style, v);
+      downloadBlob(png, `${sanitize(pack.name)}-Wallpaper-${v}.png`);
+    }
+    setBusyAll('');
+  };
   return (
     <div className="content">
       <div className="wp-wrap">
@@ -43,8 +52,12 @@ export default function WallpapersTab({ pack }) {
           <p className="note">
             Four 4K wallpapers (2160×3840) generated from “{pack.name}”'s palette — pair them with
             the icon pack in CrestWall or bundle them in the Gumroad ZIP (Export tab has a checkbox).
-            Grain follows the pack's grain setting.
+            Grain follows the pack's grain setting. Wallpapers depend only on the pack's <em>style</em>,
+            so you can produce standalone wallpaper sets without ever exporting icons.
           </p>
+          <button className="btn small" disabled={!!busyAll} onClick={dlAll}>
+            {busyAll ? `Rendering ${busyAll}…` : 'Download all 4'}
+          </button>
         </div>
         <div className="wp-grid">
           {WALLPAPER_VARIANTS.map((v) => (
