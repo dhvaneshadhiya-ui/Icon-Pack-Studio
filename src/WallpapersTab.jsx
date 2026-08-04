@@ -55,8 +55,10 @@ export default function WallpapersTab({ pack }) {
   };
 
   // ---- AI mode state -----------------------------------------------------
-  const [subject, setSubject] = useState('a lone mountain range under drifting clouds');
-  const [preset, setPreset] = useState(WALLPAPER_PRESETS[0]);
+  const [prompt, setPrompt] = useState(
+    'A breathtaking 4K phone wallpaper: a lone mountain range under drifting clouds, cinematic light, ultra high detail, vertical composition, no text, no logos, no watermark'
+  );
+  const [presetName, setPresetName] = useState('');
   const [aspect, setAspect] = useState('Portrait');
   const [count, setCount] = useState(2);
   const [aiStatus, setAiStatus] = useState('');
@@ -66,14 +68,13 @@ export default function WallpapersTab({ pack }) {
     loadGallery().then(setGallery);
   }, []);
 
-  const finalPrompt = preset.prompt.replace('{subject}', subject || 'an abstract composition');
 
   const run = async () => {
     setAiStatus('Starting…');
     const added = [];
     try {
       await generateWallpapers({
-        prompt: finalPrompt,
+        prompt,
         aspect,
         count,
         onProgress: setAiStatus,
@@ -178,21 +179,28 @@ export default function WallpapersTab({ pack }) {
           </>
         ) : (
           <>
-            <h3>Idea</h3>
+            <h3>Prompt</h3>
             <textarea
               className="prompt"
-              style={{ minHeight: 64 }}
-              value={subject}
-              placeholder="what the wallpaper shows…"
-              onChange={(e) => setSubject(e.target.value)}
+              style={{ minHeight: 150 }}
+              value={prompt}
+              placeholder="describe anything — this is sent to the model verbatim"
+              onChange={(e) => { setPrompt(e.target.value); setPresetName(''); }}
             />
-            <h3>Style</h3>
+            <p className="note">
+              Free-form: any subject, any style, any wording. The starting points below just fill
+              this box — edit or replace it however you like.
+            </p>
+            <h3>Starting points</h3>
             <div className="preset-list">
               {WALLPAPER_PRESETS.map((q) => (
                 <button
                   key={q.name}
-                  className={preset.name === q.name ? 'active' : ''}
-                  onClick={() => setPreset(q)}
+                  className={presetName === q.name ? 'active' : ''}
+                  onClick={() => {
+                    setPresetName(q.name);
+                    setPrompt(q.prompt.replace('{subject}', 'SUBJECT'));
+                  }}
                 >
                   {q.name} <span>{q.hint}</span>
                 </button>
@@ -251,13 +259,9 @@ export default function WallpapersTab({ pack }) {
             <>
               <h2>AI wallpaper studio</h2>
               <p className="note">
-                Pick a style, describe the subject, generate a batch. Results are kept here between
-                sessions — download the ones you like.
+                Write any prompt you like — the starting points on the left are optional. Results are
+                kept here between sessions; download the ones worth keeping.
               </p>
-              <details style={{ margin: '10px 0' }}>
-                <summary className="note" style={{ cursor: 'pointer' }}>Show the full prompt being sent</summary>
-                <p className="note" style={{ background: 'var(--panel)', padding: 10, borderRadius: 8 }}>{finalPrompt}</p>
-              </details>
               {gallery.length === 0 ? (
                 <p className="note">No wallpapers yet — generate a batch to fill the gallery.</p>
               ) : (
