@@ -14,6 +14,14 @@ function openDb() {
   });
 }
 
+// generic KV access (used by the AI wallpaper gallery)
+export async function kvGet(key) {
+  try { return await idbGet(key); } catch { return null; }
+}
+export async function kvSet(key, val) {
+  try { await idbSet(key, val); return true; } catch { return false; }
+}
+
 async function idbGet(key) {
   const db = await openDb();
   return new Promise((resolve, reject) => {
