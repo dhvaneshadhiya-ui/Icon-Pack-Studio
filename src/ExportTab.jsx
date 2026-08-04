@@ -8,6 +8,7 @@ import {
 } from './svg.js';
 import { buildMobileConfig } from './mobileconfig.js';
 import { scriptableWidget } from './scriptable.js';
+import { SUITE } from './scriptableSuite.js';
 
 const sanitize = (s) => s.replace(/[^\w\- ]/g, '').trim().replace(/\s+/g, '-') || 'icon';
 
@@ -118,6 +119,10 @@ export default function ExportTab({ pack, setPack }) {
       }
       const sw = scriptableWidget(pack);
       wgf.file(sw.filename, sw.content);
+      for (const [, gen] of SUITE) {
+        const f = gen(pack);
+        wgf.file(f.filename, f.content);
+      }
       // Despia live-widget template — upload to packs/<slug>/widget-template.svg
       wgf.file(
         'widget-template.svg',

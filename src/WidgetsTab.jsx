@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { WIDGET_SIZES, widgetSvg, renderWidgetPng, despiaWidgetSvg, downloadBlob } from './svg.js';
 import { scriptableWidget, scriptableLauncherWidget } from './scriptable.js';
+import { SUITE } from './scriptableSuite.js';
 import { schemeFor } from './urlSchemes.js';
 
 const sanitize = (s) => s.replace(/[^\w\- ]/g, '').trim().replace(/\s+/g, '-') || 'pack';
@@ -119,6 +120,25 @@ export default function WidgetsTab({ pack }) {
           {launcherTargets.length > 0
             ? `Medium Scriptable widget with tappable buttons — each opens a different app: ${launcherTargets.map((t) => t.label).join(', ')}. Uses the first 4 launch-verified apps in the pack.`
             : 'Add apps with verified launch schemes to enable the launcher.'}
+        </p>
+        <h3>Widget suite</h3>
+        {SUITE.map(([name, gen]) => (
+          <button
+            key={name}
+            className="btn"
+            onClick={() => {
+              const { filename, content } = gen(pack);
+              downloadBlob(new Blob([content], { type: 'application/json' }), filename);
+            }}
+          >
+            {name} widget
+          </button>
+        ))}
+        <p className="note">
+          Live Scriptable widgets in this pack's palette: weather (no API key,
+          asks for location), calendar (real events), photo album (run once in
+          Scriptable to pick photos), countdown (set the event via the widget's
+          Parameter field). Each taps through to its matching app.
         </p>
       </div>
       <div className="content">
