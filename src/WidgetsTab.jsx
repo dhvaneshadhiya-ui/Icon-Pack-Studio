@@ -47,7 +47,12 @@ export default function WidgetsTab({ pack }) {
     downloadBlob(new Blob([svg], { type: 'image/svg+xml' }), 'widget-template.svg');
   };
 
-  const glyphChoices = [...new Set(pack.icons.filter((i) => !i.image).map((i) => i.glyph))];
+  // style-only projects have no icons to borrow a motif from, so offer a
+  // small default set instead of an empty dropdown
+  const packGlyphs = [...new Set(pack.icons.filter((i) => !i.image).map((i) => i.glyph))];
+  const glyphChoices = packGlyphs.length
+    ? packGlyphs
+    : ['Sparkles', 'Moon', 'Sun', 'Star', 'Heart', 'Flower2', 'Mountain', 'Waves'];
 
   const launcherTargets = useMemo(() => {
     const out = [];

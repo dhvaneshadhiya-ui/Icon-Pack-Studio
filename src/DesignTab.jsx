@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { icons } from 'lucide';
-import { APP_CATALOG, BRANDS, BRAND_NAMES, GLYPH_NAMES, APP_GLYPH_NAMES, STYLE_PRESETS, isBrand, isAppGlyph, appGlyphOf, isTrademarkGlyph, genericGlyphFor, auditTrademarks, makeIcon, defaultPack } from './model.js';
+import { APP_CATALOG, BRANDS, BRAND_NAMES, GLYPH_NAMES, APP_GLYPH_NAMES, STYLE_PRESETS, isBrand, isAppGlyph, appGlyphOf, isTrademarkGlyph, genericGlyphFor, auditTrademarks, makeIcon, defaultPack, blankPack } from './model.js';
 import { normalizeImage, shade, pickText } from './svg.js';
 import { IconTile } from './App.jsx';
 
@@ -370,6 +370,20 @@ export default function DesignTab({ pack, setPack, updateStyle, updateIcon }) {
         <p className="note">
           Slices a grid image (e.g. an AI-generated 4×4 sheet) and assigns each tile to your icons
           in grid order. Tiles land as per-icon images.
+        </p>
+        <button
+          className="btn"
+          onClick={() => {
+            if (confirm('Start a style-only project? Icons are cleared; the palette stays editable for wallpapers and widgets.')) {
+              setPack((p) => ({ ...blankPack(), style: p.style }));
+            }
+          }}
+        >
+          Style-only project (no icons)
+        </button>
+        <p className="note">
+          Wallpapers and widgets are generated from the palette alone — clear the icons to work on
+          them without an icon pack.
         </p>
         <button
           className="btn danger"

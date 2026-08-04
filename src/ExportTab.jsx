@@ -79,7 +79,9 @@ export default function ExportTab({ pack, setPack }) {
 
   const exportZip = async () => {
     const chosen = Object.entries(sizes).filter(([, v]) => v).map(([k]) => +k);
-    if (!chosen.length) return;
+    // icons are optional: a style-only export (wallpapers/widgets/cover) is
+    // valid, so never bail just because no icon size is selected
+    const includeIcons = chosen.length > 0 && pack.icons.length > 0;
     const zip = new JSZip();
     const root = zip.folder(sanitize(pack.name));
     // mode name -> [style transform, icon transform]
@@ -88,7 +90,7 @@ export default function ExportTab({ pack, setPack }) {
     if (variants.mono) modes.push(['-mono', monoStyle, monoIcon]);
     const total = pack.icons.length * chosen.length * modes.length;
     let done = 0;
-    for (const [suffix, fs, fi] of modes) {
+    if (includeIcons) for (const [suffix, fs, fi] of modes) {
       const style = fs(pack.style);
       for (const size of chosen) {
         const base = chosen.length > 1 ? `icons-${size}` : 'icons';
@@ -129,16 +131,16 @@ export default function ExportTab({ pack, setPack }) {
         despiaWidgetSvg(pack.style, { type: 'date', glyph: motif, sample: false })
       );
     }
-    if (extras.mockup) {
+    if (extras.mockup && includeIcons) {
       setBusy('Rendering home-screen preview…');
       const wall = { c1: shade(pack.style.c1, -0.2), c2: shade(pack.style.c2 ?? pack.style.c1, -0.55) };
       root.file('preview-homescreen.png', await renderMockupPng(pack, wall, { labels: true }));
     }
-    if (extras.cover) {
+    if (extras.cover && includeIcons) {
       setBusy('Rendering cover…');
       root.file('cover.png', await renderCoverPng(pack));
     }
-    if (extras.lovable) {
+    if (extras.lovable && includeIcons) {
       // CrestWall/Lovable admin bundle: app_key-named PNGs in light/dark/mono
       // folders, 512px masters + 180px profile embeds — matches rev. 3's
       // uploader ("folder of PNGs named instagram.png") and needs no
@@ -212,7 +214,7 @@ export default function ExportTab({ pack, setPack }) {
         )
       );
     }
-    if (extras.profile) {
+    if (extras.profile && includeIcons) {
       setBusy('Building install profile…');
       const { xml, included, skipped } = await buildMobileConfig(pack, { coexist: extras.coexist });
       root.file(`${sanitize(pack.name)}.mobileconfig`, xml);
@@ -225,7 +227,7 @@ export default function ExportTab({ pack, setPack }) {
       setProfileReport({ included: included.length, skipped });
     }
     if (extras.readme) root.file('README.txt', readme(pack));
-    if (extras.manifest) {
+    if (extras.manifest && includeIcons) {
       // CrestWall ingestion manifest — see CRESTWALL_INTEGRATION.md
       const used = new Set();
       // trailing-slash-normalised CDN root, e.g. https://cdn.example.com/icon-packs/aurum-noir
@@ -296,7 +298,11 @@ export default function ExportTab({ pack, setPack }) {
     <div className="content">
       <div className="export-card">
         <h2>Export “{pack.name}”</h2>
-        <p className="note">{pack.icons.length} icons will be rendered as square PNGs (iOS rounds the corners itself).</p>
+        <p className="note">
+          {pack.icons.length > 0
+            ? `${pack.icons.length} icons will be rendered as square PNGs (iOS rounds the corners itself).`
+            : 'Style-only project — no icons. Wallpapers and widgets still export from the palette.'}
+        </p>
 
         <h3>Sizes</h3>
         <div className="checks">
@@ -396,7 +402,16 @@ export default function ExportTab({ pack, setPack }) {
           </>
         )}
 
-        <button className="btn primary" disabled={!!busy || pack.icons.length === 0} onClick={exportZip}>
+        <button
+          className="btn primary"
+          disabled={
+            !!busy ||
+            // nothing to produce at all
+            (!extras.wallpapers && !extras.widgets &&
+              (pack.icons.length === 0 || !Object.values(sizes).some(Boolean)))
+          }
+          onClick={exportZip}
+        >
           {busy || 'Download ZIP'}
         </button>
 

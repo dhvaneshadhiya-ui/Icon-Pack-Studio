@@ -342,6 +342,12 @@ export function defaultPack() {
   };
 }
 
+// Style-only project: wallpapers and widgets derive from the palette alone,
+// so a pack with zero icons is a perfectly valid wallpaper/widget source.
+export function blankPack() {
+  return { ...defaultPack(), name: 'Untitled Style', icons: [] };
+}
+
 import { loadStoredPack, storePack } from './storage.js';
 
 export async function loadPack() {
