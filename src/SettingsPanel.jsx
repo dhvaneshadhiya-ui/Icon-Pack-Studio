@@ -18,10 +18,10 @@ const PROVIDER_PRESETS = [
     note: 'Same FLUX model as the local one but hosted: ~2 s per image, ~$0.003 each, and zero load on this Mac. Permissive on dark/gothic/action themes. Needs a Together API key.',
   },
   {
-    name: 'Local · FLUX.1-schnell (offline, this Mac)',
+    name: 'Local · Z-Image Turbo (offline, this Mac)',
     endpoint: 'http://localhost:8080/v1/images/generations',
-    model: 'flux.1-schnell-4bit',
-    note: 'No key, no filter, no cost, works offline — but it holds ~9 GB while rendering, so the Mac gets sluggish: ~3 min at "Portrait (fast)", ~6 min at full Portrait. Prefer Together for blocked themes unless you need offline or absolute privacy. Start with local-ai/run.sh.',
+    model: 'z-image-turbo-4bit',
+    note: 'No key, no filter, no cost, works offline. Benchmarked at ~3.5 min per "Portrait (fast)" image with an 11.8 GB peak — it fits in RAM, so the Mac stays usable (FLUX peaked at 17.2 GB and thrashed). Add "no text, no signage" to negatives — this model likes rendering letters. Start with local-ai/run.sh.',
   },
 ];
 

@@ -10,10 +10,10 @@ Then in the Studio: ⚙ Settings → Provider → "Local · LocalAI / ComfyUI".
 """
 import argparse
 import base64
+import concurrent.futures
 import io
 import random
 import re
-import threading
 import time
 
 from fastapi import FastAPI
@@ -29,27 +29,35 @@ app.add_middleware(
 )
 
 FLUX = None
-FLUX_LOCK = threading.Lock()  # one generation at a time (16 GB M1)
-MODEL_NAME = "flux.1-schnell-4bit"
-STEPS = 4  # schnell is distilled for 4; z-image-turbo wants 8
+# MLX binds GPU streams to the thread that created them, and Z-Image evaluates
+# on an explicit stream — so the model must be loaded AND used on one single
+# thread. A 1-worker executor gives us that, and serializes generation for
+# free (which we want anyway on 16 GB).
+WORKER = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="mflux")
+MODEL_NAME = "z-image-turbo-4bit"
+STEPS = 6
+GUIDANCE = None  # z-image-turbo likes ~2.0; flux schnell ignores guidance
 
 
 def load_flux(model_path: str, variant: str = "schnell"):
+    """Z-Image uses its own class and returns a bare PIL image; FLUX returns a
+    GeneratedImage wrapper. Both take the same constructor args."""
     from mflux.models.common.config.model_config import ModelConfig
-    from mflux.models.flux.variants.txt2img.flux import Flux1
 
-    global FLUX, MODEL_NAME, STEPS
-    cfg = {
-        "schnell": (ModelConfig.schnell, 4, "flux.1-schnell-4bit"),
-        "z-image": (ModelConfig.z_image_turbo, 8, "z-image-turbo-4bit"),
-        "klein": (ModelConfig.flux2_klein_4b, 4, "flux2-klein-4b"),
-    }[variant]
-    MODEL_NAME, STEPS = cfg[2], cfg[1]
-    FLUX = Flux1(
-        quantize=4,
-        model_path=model_path,
-        model_config=cfg[0](),
-    )
+    global FLUX, MODEL_NAME, STEPS, GUIDANCE
+    if variant == "z-image":
+        from mflux.models.z_image.variants.z_image import ZImage as Cls
+        # distilled for 8, but 6 is visually equivalent and ~30% faster;
+        # 4 still looks good if you want the fastest run
+        model_cfg, STEPS, MODEL_NAME, GUIDANCE = ModelConfig.z_image_turbo(), 6, "z-image-turbo-4bit", 2.0
+    elif variant == "klein":
+        from mflux.models.flux.variants.txt2img.flux import Flux1 as Cls
+        model_cfg, STEPS, MODEL_NAME, GUIDANCE = ModelConfig.flux2_klein_4b(), 4, "flux2-klein-4b", None
+    else:
+        from mflux.models.flux.variants.txt2img.flux import Flux1 as Cls
+        model_cfg, STEPS, MODEL_NAME, GUIDANCE = ModelConfig.schnell(), 4, "flux.1-schnell-4bit", None
+
+    FLUX = Cls(quantize=4, model_path=model_path, model_config=model_cfg)
     print(f"Model loaded: {MODEL_NAME} ({STEPS} steps)")
 
 
@@ -74,30 +82,40 @@ def models():
     return {"data": [{"id": MODEL_NAME, "object": "model"}]}
 
 
-@app.post("/v1/images/generations")
-def generate(req: GenRequest):
+def _render(prompt: str, w: int, h: int, n: int):
+    """Runs on the single mflux worker thread — never call directly."""
     import mlx.core as mx
 
-    w, h = parse_size(req.size)
     out = []
-    with FLUX_LOCK:
-        for _ in range(max(1, min(4, req.n))):
-            seed = random.randint(0, 2**31 - 1)
-            t0 = time.time()
-            result = FLUX.generate_image(
-                seed=seed,
-                prompt=req.prompt,
-                num_inference_steps=STEPS,
-                height=h,
-                width=w,
-            )
-            buf = io.BytesIO()
-            result.image.save(buf, format="PNG")
-            print(f"generated {w}x{h} seed={seed} in {time.time() - t0:.0f}s")
-            out.append({"b64_json": base64.b64encode(buf.getvalue()).decode()})
-            # hand MLX's buffer cache back to the OS so the rest of the
-            # system isn't left swapped out after a batch
-            mx.clear_cache()
+    for _ in range(n):
+        seed = random.randint(0, 2**31 - 1)
+        t0 = time.time()
+        kwargs = {"guidance": GUIDANCE} if GUIDANCE is not None else {}
+        result = FLUX.generate_image(
+            seed=seed,
+            prompt=prompt,
+            num_inference_steps=STEPS,
+            height=h,
+            width=w,
+            **kwargs,
+        )
+        # ZImage returns a PIL image; Flux1 returns a GeneratedImage wrapper
+        img = getattr(result, "image", result)
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        print(f"generated {w}x{h} seed={seed} in {time.time() - t0:.0f}s", flush=True)
+        out.append({"b64_json": base64.b64encode(buf.getvalue()).decode()})
+        # hand MLX's buffer cache back to the OS so the rest of the
+        # system isn't left swapped out after a batch
+        mx.clear_cache()
+    return out
+
+
+@app.post("/v1/images/generations")
+def generate(req: GenRequest):
+    w, h = parse_size(req.size)
+    n = max(1, min(4, req.n))
+    out = WORKER.submit(_render, req.prompt, w, h, n).result()
     return {"created": int(time.time()), "data": out}
 
 
@@ -106,10 +124,16 @@ if __name__ == "__main__":
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--model-path", required=True, help="dir with the mflux 4-bit weights")
-    ap.add_argument("--variant", default="schnell", choices=["schnell", "z-image", "klein"])
+    ap.add_argument("--variant", default="z-image", choices=["schnell", "z-image", "klein"])
+    ap.add_argument("--steps", type=int, help="override the variant's default step count")
     ap.add_argument("--port", type=int, default=8080)
     args = ap.parse_args()
 
     print(f"Loading {args.variant} 4-bit (first load takes a minute)…")
-    load_flux(args.model_path, args.variant)
+    # load on the same worker thread that will run generation — MLX streams
+    # are thread-bound
+    WORKER.submit(load_flux, args.model_path, args.variant).result()
+    if args.steps:
+        STEPS = args.steps
+        print(f"Step override: {STEPS}")
     uvicorn.run(app, host="127.0.0.1", port=args.port)
