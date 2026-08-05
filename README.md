@@ -1,8 +1,13 @@
 # Icon Pack Studio
 
-A local web app for conceptualizing, designing, and exporting sellable iOS
-app-icon packs — feeding [CrestWall](https://apps.apple.com/in/app/crestwall-4k-wallpapers/id6764855583)
+The content creation hub for [CrestWall](https://apps.apple.com/in/app/crestwall-4k-wallpapers/id6764855583):
+icon packs, wallpapers (static, AI-generated, depth-effect, live), and
+widgets — designed and exported from one local web app, feeding CrestWall
 premium content and Gumroad products.
+
+The production pipeline: share an idea or reference images with the
+`/icon-pack-themes` skill (the prompt engine) → paste the prompt and upload
+the references in the Studio → gpt-image-2 generates → curate → publish.
 
 ## Run
 

@@ -77,6 +77,8 @@ function loadCfg() {
 export default function AITab({ pack, updateIcon }) {
   const [cfg, setCfg] = useState(loadCfg);
   const [running, setRunning] = useState(false);
+  const [refs, setRefs] = useState([]); // style reference dataURLs (max 4)
+  const refsInput = React.useRef(null);
   const [progress, setProgress] = useState('');
   const [errors, setErrors] = useState([]);
 
@@ -94,16 +96,30 @@ export default function AITab({ pack, updateIcon }) {
       const ic = targets[i];
       setProgress(`Generating ${i + 1}/${targets.length}: ${ic.label}…`);
       try {
-        const res = await fetch(cfg.endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.key}` },
-          body: JSON.stringify({
-            model: cfg.model,
-            prompt: cfg.prompt.replaceAll('{app}', ic.label),
-            n: 1,
-            size: '1024x1024',
-          }),
-        });
+        let res;
+        const promptText = cfg.prompt.replaceAll('{app}', ic.label);
+        if (refs.length) {
+          // style references ride along on every icon via the edits endpoint
+          const fd = new FormData();
+          fd.append('model', cfg.model);
+          fd.append('prompt', promptText);
+          fd.append('n', '1');
+          fd.append('size', '1024x1024');
+          for (let r = 0; r < refs.length; r++) {
+            fd.append('image[]', await (await fetch(refs[r])).blob(), `ref-${r}.png`);
+          }
+          res = await fetch(cfg.endpoint.replace(/generations$/, 'edits'), {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${cfg.key}` },
+            body: fd,
+          });
+        } else {
+          res = await fetch(cfg.endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.key}` },
+            body: JSON.stringify({ model: cfg.model, prompt: promptText, n: 1, size: '1024x1024' }),
+          });
+        }
         if (!res.ok) {
           const body = await res.text();
           throw new Error(`HTTP ${res.status}: ${body.slice(0, 200)}`);
@@ -172,6 +188,30 @@ export default function AITab({ pack, updateIcon }) {
           ))}
         </select>
         <textarea className="prompt" value={cfg.prompt} onChange={(e) => set({ prompt: e.target.value })} />
+        <h3>Style references (optional, applied to every icon)</h3>
+        <input
+          ref={refsInput} type="file" accept="image/*" multiple hidden
+          onChange={async (e) => {
+            const files = [...(e.target.files || [])];
+            e.target.value = '';
+            const added = [];
+            for (const f of files.slice(0, 4 - refs.length)) added.push(await normalizeImage(f, 1536));
+            setRefs((r) => [...r, ...added].slice(0, 4));
+          }}
+        />
+        <button className="btn" disabled={refs.length >= 4} onClick={() => refsInput.current?.click()}>
+          {refs.length ? `Add more (${refs.length}/4)` : 'Upload references…'}
+        </button>
+        {refs.length > 0 && (
+          <div className="ref-strip">
+            {refs.map((r, i) => (
+              <div key={i} className="ref-thumb">
+                <img src={r} alt="" />
+                <button onClick={() => setRefs(refs.filter((_, j) => j !== i))}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
         <button
           className="btn primary"
           disabled={running || !cfg.key || missing.length === 0}

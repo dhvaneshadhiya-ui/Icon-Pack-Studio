@@ -88,25 +88,46 @@ export function readAiConfig() {
  * Generate `count` wallpapers. Calls back per image so the gallery fills
  * progressively rather than waiting for the whole batch.
  */
-export async function generateWallpapers({ prompt, aspect, count = 1, onImage, onProgress }) {
+export async function generateWallpapers({ prompt, aspect, count = 1, refs = [], onImage, onProgress }) {
   const cfg = readAiConfig();
   if (!cfg.key) throw new Error('Add your API key in the AI Generate tab first.');
   const size = ASPECTS[aspect] ?? ASPECTS.Portrait;
+  const genUrl = cfg.endpoint || 'https://api.openai.com/v1/images/generations';
+  // reference images require the edits endpoint (multipart), mirroring the
+  // ChatGPT + reference workflow used for CrestWall wallpapers
+  const editUrl = genUrl.replace(/generations$/, 'edits');
   const out = [];
   for (let i = 0; i < count; i++) {
     onProgress?.(`Generating ${i + 1}/${count}…`);
-    const res = await fetch(cfg.endpoint || 'https://api.openai.com/v1/images/generations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.key}` },
-      body: JSON.stringify({ model: cfg.model || 'gpt-image-2', prompt, n: 1, size }),
-    });
+    let res;
+    if (refs.length) {
+      const fd = new FormData();
+      fd.append('model', cfg.model || 'gpt-image-2');
+      fd.append('prompt', prompt);
+      fd.append('n', '1');
+      fd.append('size', size);
+      for (let r = 0; r < refs.length; r++) {
+        fd.append('image[]', await (await fetch(refs[r])).blob(), `ref-${r}.png`);
+      }
+      res = await fetch(editUrl, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${cfg.key}` }, // browser sets multipart boundary
+        body: fd,
+      });
+    } else {
+      res = await fetch(genUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.key}` },
+        body: JSON.stringify({ model: cfg.model || 'gpt-image-2', prompt, n: 1, size }),
+      });
+    }
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`);
     const item = (await res.json()).data?.[0];
     let url;
     if (item?.b64_json) url = `data:image/png;base64,${item.b64_json}`;
     else if (item?.url) url = await normalizeImage(await (await fetch(item.url)).blob(), 2048);
     else throw new Error('No image in response');
-    const entry = { id: crypto.randomUUID(), url, prompt, aspect, at: Date.now() };
+    const entry = { id: crypto.randomUUID(), url, prompt, aspect, refs: refs.length, at: Date.now() };
     out.push(entry);
     onImage?.(entry);
   }

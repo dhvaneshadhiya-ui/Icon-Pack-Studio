@@ -65,6 +65,15 @@ export default function WallpapersTab({ pack }) {
   const [count, setCount] = useState(2);
   const [aiStatus, setAiStatus] = useState('');
   const [gallery, setGallery] = useState([]);
+  const [refs, setRefs] = useState([]); // reference image dataURLs (max 4)
+  const refsInput = React.useRef(null);
+  const onRefs = async (e) => {
+    const files = [...(e.target.files || [])];
+    e.target.value = '';
+    const added = [];
+    for (const f of files.slice(0, 4 - refs.length)) added.push(await normalizeImage(f, 1536));
+    setRefs((r) => [...r, ...added].slice(0, 4));
+  };
 
   useEffect(() => {
     loadGallery().then(setGallery);
@@ -113,6 +122,7 @@ export default function WallpapersTab({ pack }) {
         prompt,
         aspect,
         count,
+        refs,
         onProgress: setAiStatus,
         onImage: (entry) => {
           added.push(entry);
@@ -295,6 +305,25 @@ export default function WallpapersTab({ pack }) {
             <p className="note">
               Free-form: any subject, any style, any wording. The starting points below just fill
               this box — edit or replace it however you like.
+            </p>
+            <h3>Reference images</h3>
+            <input ref={refsInput} type="file" accept="image/*" multiple hidden onChange={onRefs} />
+            <button className="btn" disabled={refs.length >= 4} onClick={() => refsInput.current?.click()}>
+              {refs.length ? `Add more (${refs.length}/4)` : 'Upload references…'}
+            </button>
+            {refs.length > 0 && (
+              <div className="ref-strip">
+                {refs.map((r, i) => (
+                  <div key={i} className="ref-thumb">
+                    <img src={r} alt="" />
+                    <button onClick={() => setRefs(refs.filter((_, j) => j !== i))}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="note">
+              Optional — the model uses them for style, palette or composition (reverse-engineering
+              a look). With references, generation goes through the images/edits endpoint.
             </p>
             <h3>Starting points</h3>
             <div className="preset-list">
