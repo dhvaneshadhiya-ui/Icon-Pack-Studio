@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { normalizeImage } from './svg.js';
 import { IconTile } from './App.jsx';
-
-const CFG_KEY = 'iconPackStudio.ai.v2';
+import { loadAiCfg, saveAiCfg } from './aiConfig.js';
+import { useRefTray } from './refTray.jsx';
 
 // Every theme follows the same anatomy — see PROMPT_PLAYBOOK.md:
 // [role] + [subject with {app}] + [style system] + [composition] + [negatives]
@@ -55,37 +55,22 @@ export const THEME_PROMPTS = [
 ];
 
 function loadCfg() {
-  const defaults = {
-    endpoint: 'https://api.openai.com/v1/images/generations',
-    model: 'gpt-image-2',
-    key: '',
-    prompt: THEME_PROMPTS[0].prompt,
-  };
-  try {
-    const stored = JSON.parse(localStorage.getItem(CFG_KEY)) || {};
-    // carry the key over from the v1 config if present
-    if (!stored.key) {
-      const old = JSON.parse(localStorage.getItem('iconPackStudio.ai.v1')) || {};
-      if (old.key) stored.key = old.key;
-    }
-    return { ...defaults, ...stored };
-  } catch {
-    return defaults;
-  }
+  const cfg = loadAiCfg();
+  return { ...cfg, prompt: cfg.prompt || THEME_PROMPTS[0].prompt };
 }
 
-export default function AITab({ pack, updateIcon }) {
+export default function AITab({ pack, updateIcon, openSettings }) {
   const [cfg, setCfg] = useState(loadCfg);
   const [running, setRunning] = useState(false);
-  const [refs, setRefs] = useState([]); // style reference dataURLs (max 4)
+  const tray = useRefTray();
+  const refs = tray?.refs ?? [];
   const refsInput = React.useRef(null);
   const [progress, setProgress] = useState('');
   const [errors, setErrors] = useState([]);
 
   const set = (patch) => {
-    const next = { ...cfg, ...patch };
-    setCfg(next);
-    localStorage.setItem(CFG_KEY, JSON.stringify(next));
+    setCfg((c) => ({ ...c, ...patch }));
+    saveAiCfg(patch);
   };
 
   const generate = async (targets) => {
@@ -153,26 +138,12 @@ export default function AITab({ pack, updateIcon }) {
       <div className="ai-form">
         <h2>AI icon generation</h2>
         <p className="note">
-          Uses an OpenAI-compatible image API. Your API key is stored only in this browser
-          (localStorage) and requests go directly from your browser to the endpoint below.
+          {cfg.key
+            ? <>✓ Using <code>{cfg.model}</code> with your saved key — change it in ⚙ Settings.</>
+            : <>No API key yet — add one in Settings to enable generation.</>}
+          {' '}
+          <button className="btn small" onClick={openSettings}>Open Settings</button>
         </p>
-        <div className="field">
-          <label>Endpoint</label>
-          <input type="text" value={cfg.endpoint} onChange={(e) => set({ endpoint: e.target.value })} />
-        </div>
-        <div className="field">
-          <label>Model</label>
-          <input type="text" value={cfg.model} onChange={(e) => set({ model: e.target.value })} />
-        </div>
-        <div className="field">
-          <label>API key</label>
-          <input
-            type="password"
-            placeholder="Paste your own key"
-            value={cfg.key}
-            onChange={(e) => set({ key: e.target.value })}
-          />
-        </div>
         <h3>Style prompt — <code>{'{app}'}</code> becomes each icon's name</h3>
         <select
           className="glyph-search"
@@ -188,30 +159,22 @@ export default function AITab({ pack, updateIcon }) {
           ))}
         </select>
         <textarea className="prompt" value={cfg.prompt} onChange={(e) => set({ prompt: e.target.value })} />
-        <h3>Style references (optional, applied to every icon)</h3>
+        <h3>Style references ({refs.length}/4 — applied to every icon)</h3>
         <input
           ref={refsInput} type="file" accept="image/*" multiple hidden
           onChange={async (e) => {
             const files = [...(e.target.files || [])];
             e.target.value = '';
-            const added = [];
-            for (const f of files.slice(0, 4 - refs.length)) added.push(await normalizeImage(f, 1536));
-            setRefs((r) => [...r, ...added].slice(0, 4));
+            await tray.addFiles(files);
           }}
         />
         <button className="btn" disabled={refs.length >= 4} onClick={() => refsInput.current?.click()}>
-          {refs.length ? `Add more (${refs.length}/4)` : 'Upload references…'}
+          {refs.length ? 'Add more…' : 'Upload references…'}
         </button>
-        {refs.length > 0 && (
-          <div className="ref-strip">
-            {refs.map((r, i) => (
-              <div key={i} className="ref-thumb">
-                <img src={r} alt="" />
-                <button onClick={() => setRefs(refs.filter((_, j) => j !== i))}>×</button>
-              </div>
-            ))}
-          </div>
-        )}
+        <p className="note">
+          Or drag &amp; drop / paste (⌘V) images anywhere in the app — they land in the shared
+          reference tray at the bottom.
+        </p>
         <button
           className="btn primary"
           disabled={running || !cfg.key || missing.length === 0}
@@ -226,7 +189,7 @@ export default function AITab({ pack, updateIcon }) {
         >
           Regenerate all {pack.icons.length}
         </button>
-        {!cfg.key && <p className="warn">Paste your API key above to enable generation.</p>}
+        {!cfg.key && <p className="warn">Add your API key in ⚙ Settings to enable generation.</p>}
         {progress && <div className="progress">{progress}</div>}
         {errors.map((e, i) => (
           <p className="warn" key={i}>{e}</p>

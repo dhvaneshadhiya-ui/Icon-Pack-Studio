@@ -1,19 +1,28 @@
-// Depth-effect wallpaper composer.
+// Depth-effect wallpapers.
 //
-// iOS 16+ lifts a photo's subject IN FRONT of the Lock Screen clock. It is not
-// a file format — iOS segments the subject itself at set-wallpaper time. Our
-// job is purely compositional: produce a flat image whose subject is
-// well-separated and positioned so it overlaps the clock band.
-//
-// Rules encoded here (from how iOS behaves):
-//  - the clock occupies roughly 12%–27% of screen height
-//  - the subject must CROSS that band for any lift to be visible
-//  - it must not blanket the band, or iOS drops depth to keep time readable
-//  - flat/abstract art rarely segments; a clear figure or object does
+// iOS 16+ segments a wallpaper's subject ON DEVICE and slides the Lock Screen
+// clock behind its upper edge. There is no special file format and no layering
+// on our side — the production method is a SINGLE flat image whose composition
+// obeys the rules:
+//  - subject slightly below center, its upper edge extending into the clock area
+//  - upper 35–45% of the frame mostly clean (clock + Dynamic Island)
+//  - clean silhouette, strong subject/background separation, shallow depth of field
+//  - subject must not hide too many clock numbers, or iOS disables the effect
+//  - large Lock Screen widgets near the top also disable it
+// The clock-band preview in the Wallpapers tab is a validation view; the manual
+// compositor below is a secondary tool for hand-assembled cut-outs.
 import { svgToPng } from './svg.js';
 import { wallpaperArt } from './wallpapers.js';
 
 export const CLOCK_BAND = { top: 0.12, bottom: 0.27 };
+
+// House production prompts (CrestWall). [SUBJECT] is replaced by the user.
+export const DEPTH_PROMPT_TEMPLATE =
+  "Create a premium iPhone lock screen wallpaper featuring [SUBJECT]. Compose it specifically for Apple's Depth Effect. Place the main subject slightly below center with its upper portion extending naturally toward the top of the frame so that part of the silhouette overlaps the future clock area. Keep the top 35–45% mostly clean with elegant negative space while allowing only the upper edge of the subject to intersect the clock region. Use strong foreground-background separation, a clean silhouette, cinematic lighting, shallow depth of field, and minimal visual clutter around the subject. Leave safe space around the Dynamic Island. Vertical 9:19.5 (1290×2796). Wallpaper quality. Ultra-detailed. Premium aesthetic. No text, no watermark, no logos, no UI, no borders, no mockup. Optimized for Apple Lock Screen Depth Effect.";
+
+// Compact spec that can be appended to any wallpaper prompt.
+export const DEPTH_SPEC =
+  'Optimized for Apple iPhone Lock Screen Depth Effect. Vertical 9:19.5 (1290×2796). Leave the upper 35–45% mostly clean for the clock and Dynamic Island. Position the main subject slightly below center with a small portion extending into the clock area. Maintain a clean silhouette, strong subject-background separation, shallow depth of field, minimal background clutter, and avoid important details behind the Dynamic Island. Wallpaper quality. No text, logos, watermark, UI, borders, or mockups.';
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
@@ -25,7 +34,7 @@ function loadImage(src) {
 }
 
 /**
- * Composite background + subject into a flat wallpaper.
+ * Composite background + subject into a flat wallpaper (manual path).
  * subject: { url, x, y, scale }  — x/y are the subject centre as 0..1 of W/H
  * background: { kind: 'art', p, style } | { kind: 'image', url }
  */
@@ -59,26 +68,4 @@ export async function composeDepth({ background, subject, W, H }) {
   }
 
   return new Promise((res) => canvas.toBlob(res, 'image/png'));
-}
-
-/**
- * Check the subject actually crosses the clock band — the difference between
- * a depth wallpaper and an ordinary one.
- */
-export function depthAdvice(subject, subjectAspect = 1.4) {
-  if (!subject?.url) return { ok: false, msg: 'Add a subject cut-out (PNG with transparent background).' };
-  // subject height as a fraction of screen height, using the rendered aspect
-  const hFrac = ((subject.scale ?? 0.8) * subjectAspect) / 1.777; // W/H of 9:16
-  const top = subject.y - hFrac / 2;
-  const bottom = subject.y + hFrac / 2;
-  if (top > CLOCK_BAND.bottom) {
-    return { ok: false, msg: 'Subject sits below the clock — raise it so its top crosses the guide band, or iOS shows no depth.' };
-  }
-  if (bottom < CLOCK_BAND.top) {
-    return { ok: false, msg: 'Subject is entirely above the clock — lower it into the guide band.' };
-  }
-  if (top < CLOCK_BAND.top && bottom > CLOCK_BAND.bottom && (subject.scale ?? 0.8) > 0.95) {
-    return { ok: true, warn: true, msg: 'Subject covers the whole clock band — iOS may disable depth to keep the time readable. Try a smaller scale.' };
-  }
-  return { ok: true, msg: 'Subject crosses the clock band — depth effect should trigger.' };
 }

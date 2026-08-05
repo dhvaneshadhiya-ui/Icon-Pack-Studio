@@ -18,6 +18,16 @@ npm run dev   # http://localhost:5173
 
 ## What it does
 
+- **Home** — pick what to create (icons, AI icons, wallpapers, AI wallpapers,
+  depth, live, widgets, export). OpenAI API key lives in ⚙ Settings, saved in
+  the browser. Reference images can be dragged, dropped or pasted (⌘V)
+  anywhere — they land in a shared tray and ride along with every AI
+  generation.
+- **Depth wallpapers** — single AI-generated image composed for Apple's
+  Lock Screen Depth Effect (iOS segments the subject on device): subject
+  slightly below center, upper 35–45% clean, top edge crossing the clock
+  area. House prompt templates built in, with a clock-band preview to
+  validate composition. Saves upscale to 1290×2796 or 4K 2160×3840.
 - **Design** — 163-app catalog, ~5,200 glyphs (lucide + simple-icons brand
   marks + Arcticons app marks), style presets, gradients/patterns/finishes,
   per-icon overrides, image import, AI contact-sheet slicing, and a

@@ -7,13 +7,17 @@ import {
 import {
   ASPECTS, WALLPAPER_PRESETS, generateWallpapers, loadGallery, saveGallery,
 } from './aiWallpapers.js';
-import { composeDepth, depthAdvice, CLOCK_BAND } from './depth.js';
+import { composeDepth, CLOCK_BAND, DEPTH_PROMPT_TEMPLATE, DEPTH_SPEC } from './depth.js';
+import { OUTPUT_SIZES, renderAtSize } from './upscale.js';
 import { normalizeImage } from './svg.js';
+import { useRefTray } from './refTray.jsx';
 
 const sanitize = (s) => s.replace(/[^\w\- ]/g, '').trim().replace(/\s+/g, '-') || 'wallpaper';
 
-export default function WallpapersTab({ pack }) {
-  const [mode, setMode] = useState('design'); // 'design' | 'ai'
+export default function WallpapersTab({ pack, initialMode }) {
+  const [mode, setMode] = useState(initialMode || 'design'); // 'design' | 'ai' | 'depth'
+  const tray = useRefTray();
+  const refs = tray?.refs ?? [];
 
   // ---- design mode state -------------------------------------------------
   const [p, setP] = useState({
@@ -65,30 +69,68 @@ export default function WallpapersTab({ pack }) {
   const [count, setCount] = useState(2);
   const [aiStatus, setAiStatus] = useState('');
   const [gallery, setGallery] = useState([]);
-  const [refs, setRefs] = useState([]); // reference image dataURLs (max 4)
+  const [outSize, setOutSize] = useState('iPhone 4K · 2160×3840');
   const refsInput = React.useRef(null);
   const onRefs = async (e) => {
     const files = [...(e.target.files || [])];
     e.target.value = '';
-    const added = [];
-    for (const f of files.slice(0, 4 - refs.length)) added.push(await normalizeImage(f, 1536));
-    setRefs((r) => [...r, ...added].slice(0, 4));
+    await tray.addFiles(files);
   };
 
   useEffect(() => {
     loadGallery().then(setGallery);
   }, []);
 
+  const addToGallery = (entry) => {
+    setGallery((g) => {
+      const next = [entry, ...g];
+      saveGallery(next);
+      return next;
+    });
+  };
+
   // ---- depth mode state --------------------------------------------------
-  const [subject, setSubject] = useState(null);   // dataURL cut-out
+  const [depthPrompt, setDepthPrompt] = useState(DEPTH_PROMPT_TEMPLATE);
+  const [depthStatus, setDepthStatus] = useState('');
+  const [bgImage, setBgImage] = useState(null); // selected wallpaper shown in the preview
+  const [subject, setSubject] = useState(null); // optional manual cut-out
   const [subjPos, setSubjPos] = useState({ x: 0.5, y: 0.45, scale: 0.85 });
-  const [bgSource, setBgSource] = useState('art'); // 'art' | 'gallery'
   const [bgStyle, setBgStyle] = useState('Mesh');
-  const [bgImage, setBgImage] = useState(null);
   const [depthBusy, setDepthBusy] = useState('');
   const subjRef = React.useRef(null);
 
-  const advice = depthAdvice(subject ? { ...subjPos, url: subject } : null);
+  const runDepth = async () => {
+    setDepthStatus('Starting…');
+    try {
+      await generateWallpapers({
+        prompt: depthPrompt,
+        aspect: 'Portrait',
+        count: 1,
+        refs,
+        onProgress: setDepthStatus,
+        onImage: (entry) => {
+          addToGallery({ ...entry, depth: true });
+          setBgImage(entry.url); // straight into the clock-band preview
+        },
+      });
+      setDepthStatus('Done — check the composition against the clock band.');
+    } catch (e) {
+      setDepthStatus(e.message);
+    }
+  };
+
+  const saveDepth = async () => {
+    if (!bgImage) return;
+    setDepthBusy('Rendering…');
+    try {
+      const target = OUTPUT_SIZES[outSize];
+      const blob = await renderAtSize(bgImage, target);
+      const suffix = target ? `${target[0]}x${target[1]}` : 'orig';
+      downloadBlob(blob, `${sanitize(name)}-Depth-${suffix}.png`);
+    } finally {
+      setDepthBusy('');
+    }
+  };
 
   const onSubject = async (e) => {
     const f = e.target.files?.[0];
@@ -97,22 +139,19 @@ export default function WallpapersTab({ pack }) {
     setSubject(await normalizeImage(f, 2048));
   };
 
-  const exportDepth = async () => {
+  const exportComposed = async () => {
     setDepthBusy('Composing…');
     try {
       const blob = await composeDepth({
-        background: bgSource === 'gallery' && bgImage
-          ? { kind: 'image', url: bgImage }
-          : { kind: 'art', p, style: bgStyle },
+        background: bgImage ? { kind: 'image', url: bgImage } : { kind: 'art', p, style: bgStyle },
         subject: subject ? { url: subject, ...subjPos } : null,
         W, H,
       });
-      downloadBlob(blob, `${sanitize(name)}-Depth-${W}x${H}.png`);
+      downloadBlob(blob, `${sanitize(name)}-Depth-composed-${W}x${H}.png`);
     } finally {
       setDepthBusy('');
     }
   };
-
 
   const run = async () => {
     setAiStatus('Starting…');
@@ -126,11 +165,7 @@ export default function WallpapersTab({ pack }) {
         onProgress: setAiStatus,
         onImage: (entry) => {
           added.push(entry);
-          setGallery((g) => {
-            const next = [entry, ...g];
-            saveGallery(next);
-            return next;
-          });
+          addToGallery(entry);
         },
       });
       setAiStatus(`Done — ${added.length} added.`);
@@ -140,8 +175,10 @@ export default function WallpapersTab({ pack }) {
   };
 
   const dlAi = async (entry) => {
-    const blob = await (await fetch(entry.url)).blob();
-    downloadBlob(blob, `${sanitize(name)}-AI-${entry.id.slice(0, 6)}.png`);
+    const target = OUTPUT_SIZES[outSize];
+    const blob = await renderAtSize(entry.url, target);
+    const suffix = target ? `${target[0]}x${target[1]}` : entry.id.slice(0, 6);
+    downloadBlob(blob, `${sanitize(name)}-AI-${suffix}-${entry.id.slice(0, 4)}.png`);
   };
   const removeAi = (id) => {
     setGallery((g) => {
@@ -150,6 +187,15 @@ export default function WallpapersTab({ pack }) {
       return next;
     });
   };
+
+  const sizeSelect = (
+    <div className="field">
+      <label>Save size</label>
+      <select value={outSize} onChange={(e) => setOutSize(e.target.value)}>
+        {Object.keys(OUTPUT_SIZES).map((k) => <option key={k} value={k}>{k}</option>)}
+      </select>
+    </div>
+  );
 
   return (
     <div className="main">
@@ -169,72 +215,89 @@ export default function WallpapersTab({ pack }) {
 
         {mode === 'depth' ? (
           <>
-            <h3>Subject</h3>
-            <input ref={subjRef} type="file" accept="image/png,image/*" hidden onChange={onSubject} />
-            <button className="btn" onClick={() => subjRef.current?.click()}>
-              {subject ? 'Replace cut-out…' : 'Upload subject cut-out…'}
-            </button>
+            <h3>Depth prompt</h3>
+            <textarea
+              className="prompt"
+              style={{ minHeight: 220 }}
+              value={depthPrompt}
+              onChange={(e) => setDepthPrompt(e.target.value)}
+            />
+            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+              <button className="btn small" onClick={() => setDepthPrompt(DEPTH_PROMPT_TEMPLATE)}>
+                House template
+              </button>
+              <button
+                className="btn small"
+                title="Append the compact depth spec to whatever is in the box"
+                onClick={() => setDepthPrompt((t) => `${t.trim()} ${DEPTH_SPEC}`)}
+              >
+                + spec suffix
+              </button>
+            </div>
             <p className="note">
-              A PNG with a transparent background works best — a person, animal or object with
-              clean edges. Flat abstract art will not segment.
+              Replace <code>[SUBJECT]</code> with your subject. References in the tray
+              ({refs.length}/4) ride along. Generates a single flat image composed for the
+              Depth Effect — iOS does the segmentation itself when the wallpaper is set.
             </p>
-            {subject && (
+            <button className="btn primary" disabled={/Generating|Starting/.test(depthStatus)} onClick={runDepth}>
+              {/Generating|Starting/.test(depthStatus) ? depthStatus : 'Generate depth wallpaper'}
+            </button>
+            {depthStatus && !/Generating|Starting/.test(depthStatus) && <p className="note">{depthStatus}</p>}
+
+            <h3>Save</h3>
+            {sizeSelect}
+            <button className="btn primary" disabled={!bgImage || !!depthBusy} onClick={saveDepth}>
+              {depthBusy || 'Save previewed wallpaper'}
+            </button>
+            {!bgImage && <p className="note">Generate above, or pick a wallpaper from the gallery strip.</p>}
+
+            {gallery.length > 0 && (
               <>
-                <div className="field">
-                  <label>Size {Math.round(subjPos.scale * 100)}%</label>
-                  <input type="range" min="0.3" max="1.3" step="0.02" value={subjPos.scale}
-                    onChange={(e) => setSubjPos({ ...subjPos, scale: +e.target.value })} />
+                <h3>From gallery</h3>
+                <div className="wp-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+                  {gallery.slice(0, 9).map((g) => (
+                    <img key={g.id} src={g.url} alt="" onClick={() => setBgImage(g.url)}
+                      style={{ width: '100%', borderRadius: 6, cursor: 'pointer', display: 'block',
+                        outline: bgImage === g.url ? '2px solid var(--accent)' : 'none' }} />
+                  ))}
                 </div>
-                <div className="field">
-                  <label>Vertical {Math.round(subjPos.y * 100)}%</label>
-                  <input type="range" min="0.1" max="0.9" step="0.01" value={subjPos.y}
-                    onChange={(e) => setSubjPos({ ...subjPos, y: +e.target.value })} />
-                </div>
-                <div className="field">
-                  <label>Horizontal {Math.round(subjPos.x * 100)}%</label>
-                  <input type="range" min="0.1" max="0.9" step="0.01" value={subjPos.x}
-                    onChange={(e) => setSubjPos({ ...subjPos, x: +e.target.value })} />
-                </div>
-                <button className="btn small danger" onClick={() => setSubject(null)}>Remove subject</button>
               </>
             )}
-            <h3>Background</h3>
-            <div className="seg">
-              {[['art', 'Generated'], ['gallery', 'From gallery']].map(([k, l]) => (
-                <button key={k} className={bgSource === k ? 'active' : ''} onClick={() => setBgSource(k)}>{l}</button>
-              ))}
-            </div>
-            {bgSource === 'art' ? (
-              <div className="field" style={{ marginTop: 8 }}>
-                <label>Style</label>
-                <select value={bgStyle} onChange={(e) => setBgStyle(e.target.value)}>
-                  {WALLPAPER_STYLES.map((x) => <option key={x} value={x}>{x}</option>)}
-                </select>
-              </div>
-            ) : gallery.length ? (
-              <div className="wp-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginTop: 8 }}>
-                {gallery.slice(0, 9).map((g) => (
-                  <img key={g.id} src={g.url} alt="" onClick={() => setBgImage(g.url)}
-                    style={{ width: '100%', borderRadius: 6, cursor: 'pointer', display: 'block',
-                      outline: bgImage === g.url ? '2px solid var(--accent)' : 'none' }} />
-                ))}
-              </div>
-            ) : (
-              <p className="note">Generate wallpapers in AI Studio first.</p>
-            )}
-            <div className="field" style={{ marginTop: 10 }}>
-              <label>Size</label>
-              <select value={sizeKey} onChange={(e) => setSizeKey(e.target.value)}>
-                {Object.entries(WALLPAPER_SIZES).map(([k, [w, h]]) => (
-                  <option key={k} value={k}>{k} · {w}×{h}</option>
-                ))}
-              </select>
-            </div>
-            <h3>Export</h3>
-            <button className="btn primary" disabled={!!depthBusy || !subject} onClick={exportDepth}>
-              {depthBusy || 'Download depth wallpaper'}
-            </button>
-            <p className={advice.ok ? (advice.warn ? 'warn' : 'note') : 'warn'}>{advice.msg}</p>
+
+            <details style={{ marginTop: 14 }}>
+              <summary>Manual compose (optional)</summary>
+              <p className="note">
+                Only for assembling a cut-out over a background by hand — the AI prompt above is
+                the production path.
+              </p>
+              <input ref={subjRef} type="file" accept="image/png,image/*" hidden onChange={onSubject} />
+              <button className="btn" onClick={() => subjRef.current?.click()}>
+                {subject ? 'Replace cut-out…' : 'Upload subject cut-out…'}
+              </button>
+              {subject && (
+                <>
+                  <div className="field">
+                    <label>Size {Math.round(subjPos.scale * 100)}%</label>
+                    <input type="range" min="0.3" max="1.3" step="0.02" value={subjPos.scale}
+                      onChange={(e) => setSubjPos({ ...subjPos, scale: +e.target.value })} />
+                  </div>
+                  <div className="field">
+                    <label>Vertical {Math.round(subjPos.y * 100)}%</label>
+                    <input type="range" min="0.1" max="0.9" step="0.01" value={subjPos.y}
+                      onChange={(e) => setSubjPos({ ...subjPos, y: +e.target.value })} />
+                  </div>
+                  <div className="field">
+                    <label>Horizontal {Math.round(subjPos.x * 100)}%</label>
+                    <input type="range" min="0.1" max="0.9" step="0.01" value={subjPos.x}
+                      onChange={(e) => setSubjPos({ ...subjPos, x: +e.target.value })} />
+                  </div>
+                  <button className="btn small danger" onClick={() => setSubject(null)}>Remove subject</button>
+                  <button className="btn" disabled={!!depthBusy} onClick={exportComposed}>
+                    {depthBusy || 'Download composed PNG'}
+                  </button>
+                </>
+              )}
+            </details>
           </>
         ) : mode === 'design' ? (
           <>
@@ -297,7 +360,7 @@ export default function WallpapersTab({ pack }) {
             <h3>Prompt</h3>
             <textarea
               className="prompt"
-              style={{ minHeight: 150 }}
+              style={{ minHeight: 170 }}
               value={prompt}
               placeholder="describe anything — this is sent to the model verbatim"
               onChange={(e) => { setPrompt(e.target.value); setPresetName(''); }}
@@ -306,24 +369,14 @@ export default function WallpapersTab({ pack }) {
               Free-form: any subject, any style, any wording. The starting points below just fill
               this box — edit or replace it however you like.
             </p>
-            <h3>Reference images</h3>
+            <h3>Reference images ({refs.length}/4)</h3>
             <input ref={refsInput} type="file" accept="image/*" multiple hidden onChange={onRefs} />
             <button className="btn" disabled={refs.length >= 4} onClick={() => refsInput.current?.click()}>
-              {refs.length ? `Add more (${refs.length}/4)` : 'Upload references…'}
+              {refs.length ? 'Add more…' : 'Upload references…'}
             </button>
-            {refs.length > 0 && (
-              <div className="ref-strip">
-                {refs.map((r, i) => (
-                  <div key={i} className="ref-thumb">
-                    <img src={r} alt="" />
-                    <button onClick={() => setRefs(refs.filter((_, j) => j !== i))}>×</button>
-                  </div>
-                ))}
-              </div>
-            )}
             <p className="note">
-              Optional — the model uses them for style, palette or composition (reverse-engineering
-              a look). With references, generation goes through the images/edits endpoint.
+              Or drag &amp; drop / paste (⌘V) images anywhere in the app — they land in the tray
+              at the bottom and are sent with every generation (images/edits endpoint).
             </p>
             <h3>Starting points</h3>
             <div className="preset-list">
@@ -354,12 +407,14 @@ export default function WallpapersTab({ pack }) {
                 {[1, 2, 4].map((n) => <option key={n} value={n}>{n}</option>)}
               </select>
             </div>
+            {sizeSelect}
             <button className="btn primary" disabled={/Generating|Starting/.test(aiStatus)} onClick={run}>
               {/Generating|Starting/.test(aiStatus) ? aiStatus : `Generate ${count}`}
             </button>
             {aiStatus && !/Generating|Starting/.test(aiStatus) && <p className="note">{aiStatus}</p>}
             <p className="note">
-              Uses the endpoint, model and key from the AI Generate tab. ~$0.03–0.06 per image.
+              The model generates at 1024×1536; “Save size” upscales on download (4K for
+              CrestWall). Endpoint, model and key live in ⚙ Settings. ~$0.03–0.06 per image.
             </p>
           </>
         )}
@@ -369,18 +424,20 @@ export default function WallpapersTab({ pack }) {
         <div className="wp-wrap">
           {mode === 'depth' ? (
             <>
-              <h2>Depth effect</h2>
+              <h2>Depth-effect wallpaper</h2>
               <p className="note">
-                iOS lifts a photo's subject in front of the Lock Screen clock. It performs the
-                segmentation itself — our job is composition: the subject must <em>cross</em> the
-                guide band without blanketing it.
+                iOS segments the subject itself and slides the clock <em>behind</em> its upper
+                edge. So a depth wallpaper is one well-composed flat image: subject slightly below
+                center, upper 35–45% mostly clean, only the subject's top edge crossing the clock
+                area — exactly what the house prompt asks for. Use this preview to verify the
+                composition before shipping.
               </p>
               <div className="depth-stage">
                 <div className="depth-phone">
                   <div
                     className="depth-bg"
                     dangerouslySetInnerHTML={
-                      bgSource === 'gallery' && bgImage
+                      bgImage
                         ? { __html: `<img src="${bgImage}" alt=""/>` }
                         : { __html: wallpaperArt(p, bgStyle, 360, 640, 'depth-pv') }
                     }
@@ -389,7 +446,7 @@ export default function WallpapersTab({ pack }) {
                     className="depth-band"
                     style={{ top: `${CLOCK_BAND.top * 100}%`, height: `${(CLOCK_BAND.bottom - CLOCK_BAND.top) * 100}%` }}
                   >
-                    <span>clock band — subject must cross this</span>
+                    <span>clock area — subject's top edge should cross this</span>
                   </div>
                   <div className="depth-clock">9:41</div>
                   {subject && (
@@ -407,8 +464,9 @@ export default function WallpapersTab({ pack }) {
                 </div>
               </div>
               <p className="note">
-                The clock is drawn <em>behind</em> the subject here to mirror what iOS does. Export
-                is a flat PNG — iOS re-derives the lift when the wallpaper is set.
+                Checklist: clear subject/background separation · top edge crosses the clock area
+                without hiding too many numbers (iOS disables depth if it does) · nothing important
+                behind the Dynamic Island · no large widgets planned near the top.
               </p>
             </>
           ) : mode === 'design' ? (
@@ -437,8 +495,9 @@ export default function WallpapersTab({ pack }) {
             <>
               <h2>AI wallpaper studio</h2>
               <p className="note">
-                Write any prompt you like — the starting points on the left are optional. Results are
-                kept here between sessions; download the ones worth keeping.
+                Write any prompt you like — the starting points on the left are optional. Results
+                are kept here between sessions; “Save” downloads at the size picked on the left
+                (up to 4K).
               </p>
               {gallery.length === 0 ? (
                 <p className="note">No wallpapers yet — generate a batch to fill the gallery.</p>
@@ -450,7 +509,7 @@ export default function WallpapersTab({ pack }) {
                         <img src={g.url} alt="" style={{ width: '100%', display: 'block' }} />
                       </div>
                       <div className="wp-row">
-                        <span>{new Date(g.at).toLocaleDateString()}</span>
+                        <span>{g.depth ? 'depth · ' : ''}{new Date(g.at).toLocaleDateString()}</span>
                         <span style={{ display: 'flex', gap: 6 }}>
                           <button className="btn small" onClick={() => dlAi(g)}>Save</button>
                           <button className="btn small danger" onClick={() => removeAi(g.id)}>×</button>
