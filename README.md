@@ -28,6 +28,10 @@ npm run dev   # http://localhost:5173
   slightly below center, upper 35–45% clean, top edge crossing the clock
   area. House prompt templates built in, with a clock-band preview to
   validate composition. Saves upscale to 1290×2796 or 4K 2160×3840.
+- **Live wallpapers** — two in-app paths: animate any still into a seamless
+  loop (7 canvas motion effects, recorded to MP4 at 1080×1920), or generate
+  video from a prompt via OpenAI's Videos API (sora-2, $0.10/s, same key)
+  with a crossfade loop-smoothing pass. Convert to a Live Photo with intoLive.
 - **Design** — 163-app catalog, ~5,200 glyphs (lucide + simple-icons brand
   marks + Arcticons app marks), style presets, gradients/patterns/finishes,
   per-icon overrides, image import, AI contact-sheet slicing, and a

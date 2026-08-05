@@ -10,6 +10,7 @@ import {
 import { composeDepth, CLOCK_BAND, DEPTH_PROMPT_TEMPLATE, DEPTH_SPEC } from './depth.js';
 import { OUTPUT_SIZES, renderAtSize } from './upscale.js';
 import { LIVE_EFFECTS, LIVE_DURATIONS, drawLiveFrame, recordLiveWallpaper } from './liveWallpaper.js';
+import { VIDEO_SECONDS, VIDEO_COST_PER_SEC, generateVideo, smoothLoop } from './aiVideo.js';
 import { normalizeImage } from './svg.js';
 import { useRefTray } from './refTray.jsx';
 
@@ -134,6 +135,14 @@ export default function WallpapersTab({ pack, initialMode }) {
   };
 
   // ---- live mode state ---------------------------------------------------
+  const [liveSource, setLiveSource] = useState('still'); // 'still' | 'ai'
+  const [videoPrompt, setVideoPrompt] = useState(
+    'A cinematic live wallpaper: [SUBJECT] with gentle looping motion — slow drift, breathing light, subtle atmosphere. Single continuous shot, no cuts, no camera shake, vertical composition framed for a phone screen. The final frame closely matches the first for a seamless loop. No text, no logos, no watermark.'
+  );
+  const [videoSeconds, setVideoSeconds] = useState(4);
+  const [videoUrl, setVideoUrl] = useState(null);
+  const [videoStatus, setVideoStatus] = useState('');
+  const [loopStatus, setLoopStatus] = useState('');
   const [liveSrc, setLiveSrc] = useState(null);
   const [liveEffect, setLiveEffect] = useState('Zoom in');
   const [liveSeconds, setLiveSeconds] = useState(5);
@@ -142,7 +151,7 @@ export default function WallpapersTab({ pack, initialMode }) {
   const liveCanvas = React.useRef(null);
 
   useEffect(() => {
-    if (mode !== 'live' || !liveSrc || !liveCanvas.current) return;
+    if (mode !== 'live' || liveSource !== 'still' || !liveSrc || !liveCanvas.current) return;
     const canvas = liveCanvas.current;
     const ctx = canvas.getContext('2d');
     const img = new Image();
@@ -156,13 +165,47 @@ export default function WallpapersTab({ pack, initialMode }) {
     };
     img.src = liveSrc;
     return () => cancelAnimationFrame(raf);
-  }, [mode, liveSrc, liveEffect, liveSeconds]);
+  }, [mode, liveSource, liveSrc, liveEffect, liveSeconds]);
 
   const onLiveUpload = async (e) => {
     const f = e.target.files?.[0];
     e.target.value = '';
     if (!f) return;
     setLiveSrc(await normalizeImage(f, 2048));
+  };
+
+  const runVideo = async () => {
+    setVideoStatus('Starting…');
+    try {
+      const blob = await generateVideo({
+        prompt: videoPrompt,
+        seconds: videoSeconds,
+        onProgress: setVideoStatus,
+      });
+      if (videoUrl) URL.revokeObjectURL(videoUrl);
+      setVideoUrl(URL.createObjectURL(blob));
+      setVideoStatus('Done — preview on the right. Loop it or download as-is.');
+    } catch (e) {
+      setVideoStatus(e.message);
+    }
+  };
+
+  const downloadVideo = async () => {
+    const blob = await (await fetch(videoUrl)).blob();
+    downloadBlob(blob, `${sanitize(name)}-Live-sora.mp4`);
+  };
+
+  const makeLoop = async () => {
+    setLoopStatus('Preparing…');
+    try {
+      const { blob, ext } = await smoothLoop({ src: videoUrl, fade: 1, onProgress: setLoopStatus });
+      downloadBlob(blob, `${sanitize(name)}-Live-loop.${ext}`);
+      setLoopStatus(ext === 'mp4'
+        ? 'Saved seamless loop MP4 — convert with intoLive on the phone.'
+        : 'Saved WebM loop — convert to MP4 before intoLive.');
+    } catch (e) {
+      setLoopStatus(e.message);
+    }
   };
 
   const recordLive = async () => {
@@ -266,6 +309,57 @@ export default function WallpapersTab({ pack, initialMode }) {
 
         {mode === 'live' ? (
           <>
+            <div className="seg" style={{ marginBottom: 10 }}>
+              {[['still', 'Animate a still'], ['ai', 'AI video (prompt)']].map(([k, l]) => (
+                <button key={k} className={liveSource === k ? 'active' : ''} onClick={() => setLiveSource(k)}>{l}</button>
+              ))}
+            </div>
+            {liveSource === 'ai' ? (
+              <>
+                <h3>Video prompt</h3>
+                <textarea
+                  className="prompt"
+                  style={{ minHeight: 190 }}
+                  value={videoPrompt}
+                  onChange={(e) => setVideoPrompt(e.target.value)}
+                />
+                <p className="note">
+                  Replace <code>[SUBJECT]</code>. Keep the loop language — motion that returns to
+                  its start is what makes a usable live wallpaper.
+                </p>
+                <div className="field">
+                  <label>Length</label>
+                  <select value={videoSeconds} onChange={(e) => setVideoSeconds(+e.target.value)}>
+                    {VIDEO_SECONDS.map((n) => (
+                      <option key={n} value={n}>{n} s · ~${(n * VIDEO_COST_PER_SEC).toFixed(2)}</option>
+                    ))}
+                  </select>
+                </div>
+                <button className="btn primary" disabled={/Starting|Rendering|Downloading/.test(videoStatus)} onClick={runVideo}>
+                  {/Starting|Rendering|Downloading/.test(videoStatus) ? videoStatus : `Generate ${videoSeconds}s video`}
+                </button>
+                {videoStatus && !/Starting|Rendering|Downloading/.test(videoStatus) && <p className="note">{videoStatus}</p>}
+                {videoUrl && (
+                  <>
+                    <h3>Export</h3>
+                    <button className="btn primary" disabled={/Preparing|Looping/.test(loopStatus)} onClick={makeLoop}>
+                      {/Preparing|Looping/.test(loopStatus) ? loopStatus : 'Make seamless loop + download'}
+                    </button>
+                    <button className="btn" onClick={downloadVideo}>Download as generated</button>
+                    {loopStatus && !/Preparing|Looping/.test(loopStatus) && <p className="note">{loopStatus}</p>}
+                    <p className="note">
+                      The loop pass crossfades the tail into the head (1 s), so the clip repeats
+                      with no visible seam — worth it unless the raw clip already loops cleanly.
+                    </p>
+                  </>
+                )}
+                <p className="note">
+                  Uses your saved key via /v1/videos (sora-2, 720×1280, $0.10/s). OpenAI retires
+                  this API Sep 24, 2026 — the video model is editable in ⚙ Settings.
+                </p>
+              </>
+            ) : (
+            <>
             <h3>Source image</h3>
             <input ref={liveInput} type="file" accept="image/*" hidden onChange={onLiveUpload} />
             <button className="btn" onClick={() => liveInput.current?.click()}>
@@ -308,6 +402,8 @@ export default function WallpapersTab({ pack, initialMode }) {
               wallpaper. For real video footage, <code>tools/live-wallpaper.sh</code> still handles
               trimming and looping.
             </p>
+            </>
+            )}
           </>
         ) : mode === 'depth' ? (
           <>
@@ -539,10 +635,22 @@ export default function WallpapersTab({ pack, initialMode }) {
             <>
               <h2>Live wallpaper</h2>
               <p className="note">
-                Pick a still, choose a motion, watch the loop — then record it as a video file.
-                The loop is seamless by construction (every effect ends exactly where it starts).
+                {liveSource === 'ai'
+                  ? 'Describe the motion, generate a clip with your OpenAI key, then loop-smooth it into a wallpaper-ready file.'
+                  : 'Pick a still, choose a motion, watch the loop — then record it as a video file. The loop is seamless by construction (every effect ends exactly where it starts).'}
               </p>
-              {liveSrc ? (
+              {liveSource === 'ai' ? (
+                videoUrl ? (
+                  <div className="depth-stage">
+                    <div className="depth-phone">
+                      <video src={videoUrl} autoPlay muted loop playsInline
+                        style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover', borderRadius: 'inherit' }} />
+                    </div>
+                  </div>
+                ) : (
+                  <p className="note">Write a prompt on the left and generate — the clip previews here on repeat.</p>
+                )
+              ) : liveSrc ? (
                 <div className="depth-stage">
                   <div className="depth-phone">
                     <canvas ref={liveCanvas} width={360} height={640}

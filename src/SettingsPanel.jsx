@@ -5,7 +5,7 @@ export default function SettingsPanel({ onClose }) {
   const [cfg, setCfg] = useState(loadAiCfg);
   const set = (patch) => setCfg((c) => ({ ...c, ...patch }));
   const save = () => {
-    saveAiCfg({ endpoint: cfg.endpoint, model: cfg.model, key: cfg.key });
+    saveAiCfg({ endpoint: cfg.endpoint, model: cfg.model, videoModel: cfg.videoModel, key: cfg.key });
     onClose(true);
   };
 
@@ -35,6 +35,14 @@ export default function SettingsPanel({ onClose }) {
           <label>Endpoint</label>
           <input type="text" value={cfg.endpoint} onChange={(e) => set({ endpoint: e.target.value })} />
         </div>
+        <div className="field">
+          <label>Video model</label>
+          <input type="text" value={cfg.videoModel || 'sora-2'} onChange={(e) => set({ videoModel: e.target.value })} />
+        </div>
+        <p className="note">
+          Video generation uses the same key via /v1/videos ($0.10/s). OpenAI retires sora-2 on
+          Sep 24, 2026 — swap the model name here when a replacement ships.
+        </p>
         <p className="note">
           {cfg.key ? '✓ Key saved — all AI surfaces use it automatically.' : 'No key yet — generation is disabled until you add one.'}
         </p>

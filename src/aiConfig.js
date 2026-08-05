@@ -5,6 +5,9 @@ export const CFG_KEY = 'iconPackStudio.ai.v2';
 const DEFAULTS = {
   endpoint: 'https://api.openai.com/v1/images/generations',
   model: 'gpt-image-2',
+  // OpenAI retires sora-2 + /v1/videos on 2026-09-24; editable so the
+  // replacement model/endpoint can be dropped in without a code change
+  videoModel: 'sora-2',
   key: '',
 };
 

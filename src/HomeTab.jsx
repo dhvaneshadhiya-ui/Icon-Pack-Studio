@@ -6,7 +6,7 @@ const CARDS = [
   ['🌄', 'Wallpapers', 'Ten procedural styles from any palette, up to 4K.', ['wallpapers', 'design']],
   ['✨', 'AI wallpapers', 'Free-form prompts + references. Depth & parallax specs. 4K saves.', ['wallpapers', 'ai']],
   ['🕰️', 'Depth wallpaper', 'Lock Screen depth-effect composition — subject crosses the clock.', ['wallpapers', 'depth']],
-  ['🎞️', 'Live wallpaper', 'Animate any still into a seamless loop video, in the browser.', ['wallpapers', 'live']],
+  ['🎞️', 'Live wallpaper', 'Animate a still, or generate video from a prompt (Sora) — seamless loops.', ['wallpapers', 'live']],
   ['🧩', 'Widgets', 'Matching widget art, live Scriptable widgets, launchers.', ['widgets']],
   ['📦', 'Export', 'ZIPs, CrestWall bundles, install profiles, mockups.', ['export']],
 ];
