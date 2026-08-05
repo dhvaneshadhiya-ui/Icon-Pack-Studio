@@ -25,9 +25,12 @@ Generate wallpapers/icons exactly as with OpenAI.
 
 ## Notes
 
-- ~16 GB M1: a 1024×1536 wallpaper takes a few minutes (4 inference steps).
-  Sizes are capped at 1024×1536 and rounded to multiples of 16; the Studio's
-  4K save sizes upscale from there as usual.
+- **Measured on a 16 GB M1: ~6 minutes per 1024×1536 image** (4 inference
+  steps), model load ~1 min at startup. Sizes are capped at 1024×1536 and
+  rounded to multiples of 16; the Studio's 4K save sizes upscale from there
+  as usual. Batches run one at a time to stay inside unified memory.
+- Weights live in `~/IconPackLocalAI/flux-schnell-4bit` (9 GB). The venv is
+  at `~/IconPackLocalAI/venv`. Delete that folder to uninstall everything.
 - Reference images (the images/edits endpoint) are OpenAI-only — the local
   route is prompt-only.
 - Character IP rules still apply: the model will happily draw Spider-Man,

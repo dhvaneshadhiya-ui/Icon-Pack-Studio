@@ -204,7 +204,9 @@ export default function AIPanel({ pack, updateIcon, openSettings }) {
       ))}
       <p className="note">
         Results land straight on the icon grid — watch it fill in as the batch runs.
-        ~$0.03–0.06 per icon.
+        {isLocalEndpoint(cfg.endpoint)
+          ? 'Local model — free and unmetered, but a few minutes per icon.'
+          : '~$0.03–0.06 per icon.'}
       </p>
       {generated.length > 0 && (
         <button

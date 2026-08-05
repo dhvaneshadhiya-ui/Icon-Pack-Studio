@@ -13,6 +13,7 @@ import { LIVE_EFFECTS, LIVE_DURATIONS, drawLiveFrame, recordLiveWallpaper } from
 import { VIDEO_SECONDS, VIDEO_COST_PER_SEC, generateVideo, smoothLoop } from './aiVideo.js';
 import { normalizeImage } from './svg.js';
 import { useRefTray } from './refTray.jsx';
+import { loadAiCfg, isLocalEndpoint } from './aiConfig.js';
 
 const sanitize = (s) => s.replace(/[^\w\- ]/g, '').trim().replace(/\s+/g, '-') || 'wallpaper';
 
@@ -623,7 +624,10 @@ export default function WallpapersTab({ pack, initialMode }) {
             {aiStatus && !/Generating|Starting/.test(aiStatus) && <p className="note">{aiStatus}</p>}
             <p className="note">
               The model generates at 1024×1536; “Save size” upscales on download (4K for
-              CrestWall). Endpoint, model and key live in ⚙ Settings. ~$0.03–0.06 per image.
+              CrestWall). Endpoint, model and key live in ⚙ Settings.{' '}
+              {isLocalEndpoint(loadAiCfg().endpoint)
+                ? 'Local model — free, unmetered, and slower (a few minutes per image).'
+                : '~$0.03–0.06 per image.'}
             </p>
           </>
         )}
