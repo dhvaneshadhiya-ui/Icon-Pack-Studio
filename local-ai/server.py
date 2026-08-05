@@ -31,19 +31,26 @@ app.add_middleware(
 FLUX = None
 FLUX_LOCK = threading.Lock()  # one generation at a time (16 GB M1)
 MODEL_NAME = "flux.1-schnell-4bit"
+STEPS = 4  # schnell is distilled for 4; z-image-turbo wants 8
 
 
-def load_flux(model_path: str):
+def load_flux(model_path: str, variant: str = "schnell"):
     from mflux.models.common.config.model_config import ModelConfig
     from mflux.models.flux.variants.txt2img.flux import Flux1
 
-    global FLUX
+    global FLUX, MODEL_NAME, STEPS
+    cfg = {
+        "schnell": (ModelConfig.schnell, 4, "flux.1-schnell-4bit"),
+        "z-image": (ModelConfig.z_image_turbo, 8, "z-image-turbo-4bit"),
+        "klein": (ModelConfig.flux2_klein_4b, 4, "flux2-klein-4b"),
+    }[variant]
+    MODEL_NAME, STEPS = cfg[2], cfg[1]
     FLUX = Flux1(
         quantize=4,
         model_path=model_path,
-        model_config=ModelConfig.schnell(),
+        model_config=cfg[0](),
     )
-    print("Model loaded.")
+    print(f"Model loaded: {MODEL_NAME} ({STEPS} steps)")
 
 
 class GenRequest(BaseModel):
@@ -69,6 +76,8 @@ def models():
 
 @app.post("/v1/images/generations")
 def generate(req: GenRequest):
+    import mlx.core as mx
+
     w, h = parse_size(req.size)
     out = []
     with FLUX_LOCK:
@@ -78,7 +87,7 @@ def generate(req: GenRequest):
             result = FLUX.generate_image(
                 seed=seed,
                 prompt=req.prompt,
-                num_inference_steps=4,  # schnell is trained for 4 steps
+                num_inference_steps=STEPS,
                 height=h,
                 width=w,
             )
@@ -86,6 +95,9 @@ def generate(req: GenRequest):
             result.image.save(buf, format="PNG")
             print(f"generated {w}x{h} seed={seed} in {time.time() - t0:.0f}s")
             out.append({"b64_json": base64.b64encode(buf.getvalue()).decode()})
+            # hand MLX's buffer cache back to the OS so the rest of the
+            # system isn't left swapped out after a batch
+            mx.clear_cache()
     return {"created": int(time.time()), "data": out}
 
 
@@ -93,10 +105,11 @@ if __name__ == "__main__":
     import uvicorn
 
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model-path", required=True, help="dir with the mflux 4-bit schnell weights")
+    ap.add_argument("--model-path", required=True, help="dir with the mflux 4-bit weights")
+    ap.add_argument("--variant", default="schnell", choices=["schnell", "z-image", "klein"])
     ap.add_argument("--port", type=int, default=8080)
     args = ap.parse_args()
 
-    print("Loading FLUX.1-schnell 4-bit (first load takes a minute)…")
-    load_flux(args.model_path)
+    print(f"Loading {args.variant} 4-bit (first load takes a minute)…")
+    load_flux(args.model_path, args.variant)
     uvicorn.run(app, host="127.0.0.1", port=args.port)

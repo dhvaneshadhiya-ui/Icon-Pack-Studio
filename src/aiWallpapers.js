@@ -9,6 +9,7 @@ const GALLERY = 'iconPackStudio.wallpaperGallery.v1';
 
 export const ASPECTS = {
   Portrait: '1024x1536',
+  'Portrait (fast)': '768x1152',  // ~2x faster on the local model, same look after upscale
   Square: '1024x1024',
   Landscape: '1536x1024',
 };
