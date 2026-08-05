@@ -37,7 +37,7 @@ input, select { font: inherit; color: var(--text); }
 
 .main { flex: 1; display: flex; min-height: 0; }
 .sidebar {
-  width: 270px; flex-shrink: 0; overflow-y: auto; padding: 16px;
+  width: 400px; flex-shrink: 0; overflow-y: auto; padding: 18px 20px;
   border-right: 1px solid var(--border); background: var(--panel);
 }
 .rightbar {
@@ -51,12 +51,12 @@ h3:first-child { margin-top: 0; }
 
 .field { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
 .field label { color: var(--muted); font-size: 13px; }
-.field input[type="range"] { width: 130px; accent-color: var(--accent); }
+.field input[type="range"] { width: 210px; accent-color: var(--accent); }
 .field input[type="color"] {
   width: 34px; height: 26px; padding: 0; border: 1px solid var(--border); border-radius: 6px; background: none;
 }
 .field select, .field input[type="number"], .field input[type="text"], .field input[type="password"] {
-  background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; max-width: 150px;
+  background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; max-width: 230px;
 }
 .seg { display: flex; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 .seg button { flex: 1; border: none; background: transparent; padding: 6px 0; color: var(--muted); font-size: 12.5px; }

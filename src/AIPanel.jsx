@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { normalizeImage } from './svg.js';
-import { IconTile } from './App.jsx';
 import { loadAiCfg, saveAiCfg } from './aiConfig.js';
 import { useRefTray } from './refTray.jsx';
 
@@ -59,7 +58,9 @@ function loadCfg() {
   return { ...cfg, prompt: cfg.prompt || THEME_PROMPTS[0].prompt };
 }
 
-export default function AITab({ pack, updateIcon, openSettings }) {
+// AI icon generation, hosted in the Design sidebar. Results land directly on
+// the pack's icons, so the grid fills in live as the batch runs.
+export default function AIPanel({ pack, updateIcon, openSettings }) {
   const [cfg, setCfg] = useState(loadCfg);
   const [running, setRunning] = useState(false);
   const tray = useRefTray();
@@ -134,87 +135,85 @@ export default function AITab({ pack, updateIcon, openSettings }) {
   const generated = pack.icons.filter((i) => i.image);
 
   return (
-    <div className="content">
-      <div className="ai-form">
-        <h2>AI icon generation</h2>
-        <p className="note">
-          {cfg.key
-            ? <>✓ Using <code>{cfg.model}</code> with your saved key — change it in ⚙ Settings.</>
-            : <>No API key yet — add one in Settings to enable generation.</>}
-          {' '}
-          <button className="btn small" onClick={openSettings}>Open Settings</button>
-        </p>
-        <h3>Style prompt — <code>{'{app}'}</code> becomes each icon's name</h3>
-        <select
-          className="glyph-search"
-          value=""
-          onChange={(e) => {
-            const t = THEME_PROMPTS.find((t) => t.name === e.target.value);
-            if (t) set({ prompt: t.prompt });
-          }}
-        >
-          <option value="">Load a theme prompt…</option>
-          {THEME_PROMPTS.map((t) => (
-            <option key={t.name} value={t.name}>{t.name}</option>
-          ))}
-        </select>
-        <textarea className="prompt" value={cfg.prompt} onChange={(e) => set({ prompt: e.target.value })} />
-        <h3>Style references ({refs.length}/4 — applied to every icon)</h3>
-        <input
-          ref={refsInput} type="file" accept="image/*" multiple hidden
-          onChange={async (e) => {
-            const files = [...(e.target.files || [])];
-            e.target.value = '';
-            await tray.addFiles(files);
-          }}
-        />
-        <button className="btn" disabled={refs.length >= 4} onClick={() => refsInput.current?.click()}>
-          {refs.length ? 'Add more…' : 'Upload references…'}
-        </button>
-        <p className="note">
-          Or drag &amp; drop / paste (⌘V) images anywhere in the app — they land in the shared
-          reference tray at the bottom.
-        </p>
-        <button
-          className="btn primary"
-          disabled={running || !cfg.key || missing.length === 0}
-          onClick={() => generate(missing)}
-        >
-          Generate {missing.length} icons without images
-        </button>
-        <button
-          className="btn"
-          disabled={running || !cfg.key || pack.icons.length === 0}
-          onClick={() => confirm('Regenerate ALL icons? Existing AI images and uploads will be replaced.') && generate(pack.icons)}
-        >
-          Regenerate all {pack.icons.length}
-        </button>
-        {!cfg.key && <p className="warn">Add your API key in ⚙ Settings to enable generation.</p>}
-        {progress && <div className="progress">{progress}</div>}
-        {errors.map((e, i) => (
-          <p className="warn" key={i}>{e}</p>
+    <>
+      <p className="note">
+        {cfg.key
+          ? <>✓ Using <code>{cfg.model}</code> with your saved key.</>
+          : <>No API key yet — add one to enable generation.</>}
+        {' '}
+        <button className="btn small" onClick={openSettings}>⚙ Settings</button>
+      </p>
+      <h3>Style prompt — <code>{'{app}'}</code> becomes each icon's name</h3>
+      <select
+        className="glyph-search"
+        value=""
+        onChange={(e) => {
+          const t = THEME_PROMPTS.find((t) => t.name === e.target.value);
+          if (t) set({ prompt: t.prompt });
+        }}
+      >
+        <option value="">Load a theme prompt…</option>
+        {THEME_PROMPTS.map((t) => (
+          <option key={t.name} value={t.name}>{t.name}</option>
         ))}
-        {generated.length > 0 && (
-          <>
-            <h3>Generated / imported ({generated.length})</h3>
-            <div className="thumb-strip">
-              {generated.map((ic) => (
-                <IconTile key={ic.id} icon={ic} style={pack.style} tag="ai" />
-              ))}
-            </div>
-            <button
-              className="btn danger"
-              disabled={running}
-              onClick={() =>
-                confirm('Remove images from all icons and go back to glyphs?') &&
-                generated.forEach((ic) => updateIcon(ic.id, { image: null }))
-              }
-            >
-              Clear all images
-            </button>
-          </>
-        )}
-      </div>
-    </div>
+      </select>
+      <textarea
+        className="prompt"
+        style={{ minHeight: 220 }}
+        value={cfg.prompt}
+        onChange={(e) => set({ prompt: e.target.value })}
+      />
+      <h3>Style references ({refs.length}/4 — applied to every icon)</h3>
+      <input
+        ref={refsInput} type="file" accept="image/*" multiple hidden
+        onChange={async (e) => {
+          const files = [...(e.target.files || [])];
+          e.target.value = '';
+          await tray.addFiles(files);
+        }}
+      />
+      <button className="btn" disabled={refs.length >= 4} onClick={() => refsInput.current?.click()}>
+        {refs.length ? 'Add more…' : 'Upload references…'}
+      </button>
+      <p className="note">
+        Or drag &amp; drop / paste (⌘V) images anywhere — they land in the shared tray at the
+        bottom.
+      </p>
+      <button
+        className="btn primary"
+        disabled={running || !cfg.key || missing.length === 0}
+        onClick={() => generate(missing)}
+      >
+        Generate {missing.length} icons without images
+      </button>
+      <button
+        className="btn"
+        disabled={running || !cfg.key || pack.icons.length === 0}
+        onClick={() => confirm('Regenerate ALL icons? Existing AI images and uploads will be replaced.') && generate(pack.icons)}
+      >
+        Regenerate all {pack.icons.length}
+      </button>
+      {!cfg.key && <p className="warn">Add your API key in ⚙ Settings to enable generation.</p>}
+      {progress && <div className="progress">{progress}</div>}
+      {errors.map((e, i) => (
+        <p className="warn" key={i}>{e}</p>
+      ))}
+      <p className="note">
+        Results land straight on the icon grid — watch it fill in as the batch runs.
+        ~$0.03–0.06 per icon.
+      </p>
+      {generated.length > 0 && (
+        <button
+          className="btn danger"
+          disabled={running}
+          onClick={() =>
+            confirm('Remove images from all icons and go back to glyphs?') &&
+            generated.forEach((ic) => updateIcon(ic.id, { image: null }))
+          }
+        >
+          Clear all {generated.length} images
+        </button>
+      )}
+    </>
   );
 }

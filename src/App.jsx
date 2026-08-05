@@ -8,7 +8,6 @@ import DesignTab from './DesignTab.jsx';
 import PreviewTab from './PreviewTab.jsx';
 import WallpapersTab from './WallpapersTab.jsx';
 import WidgetsTab from './WidgetsTab.jsx';
-import AITab from './AITab.jsx';
 import ExportTab from './ExportTab.jsx';
 
 export function IconTile({ icon, style, tag = 't' }) {
@@ -25,7 +24,6 @@ const TABS = [
   ['preview', 'Preview'],
   ['wallpapers', 'Wallpapers'],
   ['widgets', 'Widgets'],
-  ['ai', 'AI Generate'],
   ['export', 'Export'],
 ];
 
@@ -37,6 +35,8 @@ export default function App() {
   const [cfgVersion, setCfgVersion] = useState(0); // bump to remount AI surfaces after settings change
   const [wallMode, setWallMode] = useState(null); // initial sub-mode when arriving from Home
   const [wallSeq, setWallSeq] = useState(0);
+  const [designMode, setDesignMode] = useState(null);
+  const [designSeq, setDesignSeq] = useState(0);
   const loaded = pack != null;
 
   useEffect(() => {
@@ -62,6 +62,10 @@ export default function App() {
     if (dest === 'wallpapers') {
       setWallMode(mode || null);
       setWallSeq((n) => n + 1);
+    }
+    if (dest === 'design') {
+      setDesignMode(mode || null);
+      setDesignSeq((n) => n + 1);
     }
     setTab(dest);
   };
@@ -95,16 +99,21 @@ export default function App() {
         </div>
         {tab === 'home' && <HomeTab go={go} />}
         {tab === 'design' && (
-          <DesignTab pack={pack} setPack={setPack} updateStyle={updateStyle} updateIcon={updateIcon} />
+          <DesignTab
+            key={`${designSeq}-${cfgVersion}`}
+            pack={pack}
+            setPack={setPack}
+            updateStyle={updateStyle}
+            updateIcon={updateIcon}
+            initialMode={designMode}
+            openSettings={() => setSettingsOpen(true)}
+          />
         )}
         {tab === 'preview' && <PreviewTab pack={pack} />}
         {tab === 'wallpapers' && (
           <WallpapersTab key={`${wallSeq}-${cfgVersion}`} pack={pack} initialMode={wallMode} />
         )}
         {tab === 'widgets' && <WidgetsTab pack={pack} />}
-        {tab === 'ai' && (
-          <AITab key={cfgVersion} pack={pack} updateIcon={updateIcon} openSettings={() => setSettingsOpen(true)} />
-        )}
         {tab === 'export' && <ExportTab pack={pack} setPack={setPack} />}
         {settingsOpen && (
           <SettingsPanel

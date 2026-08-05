@@ -5,17 +5,18 @@ import {
   wallpaperArt, renderWallpaperArtPng,
 } from './wallpapers.js';
 import {
-  ASPECTS, WALLPAPER_PRESETS, generateWallpapers, loadGallery, saveGallery,
+  ASPECTS, WALLPAPER_PRESETS, PARALLAX_SPEC, generateWallpapers, loadGallery, saveGallery,
 } from './aiWallpapers.js';
 import { composeDepth, CLOCK_BAND, DEPTH_PROMPT_TEMPLATE, DEPTH_SPEC } from './depth.js';
 import { OUTPUT_SIZES, renderAtSize } from './upscale.js';
+import { LIVE_EFFECTS, LIVE_DURATIONS, drawLiveFrame, recordLiveWallpaper } from './liveWallpaper.js';
 import { normalizeImage } from './svg.js';
 import { useRefTray } from './refTray.jsx';
 
 const sanitize = (s) => s.replace(/[^\w\- ]/g, '').trim().replace(/\s+/g, '-') || 'wallpaper';
 
 export default function WallpapersTab({ pack, initialMode }) {
-  const [mode, setMode] = useState(initialMode || 'design'); // 'design' | 'ai' | 'depth'
+  const [mode, setMode] = useState(initialMode || 'design'); // 'design' | 'ai' | 'depth' | 'live'
   const tray = useRefTray();
   const refs = tray?.refs ?? [];
 
@@ -132,6 +133,56 @@ export default function WallpapersTab({ pack, initialMode }) {
     }
   };
 
+  // ---- live mode state ---------------------------------------------------
+  const [liveSrc, setLiveSrc] = useState(null);
+  const [liveEffect, setLiveEffect] = useState('Zoom in');
+  const [liveSeconds, setLiveSeconds] = useState(5);
+  const [liveStatus, setLiveStatus] = useState('');
+  const liveInput = React.useRef(null);
+  const liveCanvas = React.useRef(null);
+
+  useEffect(() => {
+    if (mode !== 'live' || !liveSrc || !liveCanvas.current) return;
+    const canvas = liveCanvas.current;
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    let raf;
+    img.onload = () => {
+      const loop = (now) => {
+        drawLiveFrame(ctx, img, liveEffect, (now / 1000 % liveSeconds) / liveSeconds, canvas.width, canvas.height);
+        raf = requestAnimationFrame(loop);
+      };
+      raf = requestAnimationFrame(loop);
+    };
+    img.src = liveSrc;
+    return () => cancelAnimationFrame(raf);
+  }, [mode, liveSrc, liveEffect, liveSeconds]);
+
+  const onLiveUpload = async (e) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    setLiveSrc(await normalizeImage(f, 2048));
+  };
+
+  const recordLive = async () => {
+    setLiveStatus('Preparing…');
+    try {
+      const { blob, ext } = await recordLiveWallpaper({
+        imageUrl: liveSrc,
+        effect: liveEffect,
+        seconds: liveSeconds,
+        onProgress: setLiveStatus,
+      });
+      downloadBlob(blob, `${sanitize(name)}-Live-${liveEffect.replace(/\s+/g, '')}.${ext}`);
+      setLiveStatus(ext === 'mp4'
+        ? 'Saved MP4 — AirDrop it to your phone and convert with intoLive.'
+        : 'Saved WebM (this browser can\'t mux MP4) — convert to MP4 before intoLive.');
+    } catch (e) {
+      setLiveStatus(e.message);
+    }
+  };
+
   const onSubject = async (e) => {
     const f = e.target.files?.[0];
     e.target.value = '';
@@ -201,7 +252,7 @@ export default function WallpapersTab({ pack, initialMode }) {
     <div className="main">
       <div className="sidebar">
         <div className="seg" style={{ marginBottom: 14 }}>
-          {[['design', 'Design'], ['ai', 'AI Studio'], ['depth', 'Depth']].map(([m, label]) => (
+          {[['design', 'Design'], ['ai', 'AI Studio'], ['depth', 'Depth'], ['live', 'Live']].map(([m, label]) => (
             <button key={m} className={mode === m ? 'active' : ''} onClick={() => setMode(m)}>
               {label}
             </button>
@@ -213,7 +264,52 @@ export default function WallpapersTab({ pack, initialMode }) {
           <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
 
-        {mode === 'depth' ? (
+        {mode === 'live' ? (
+          <>
+            <h3>Source image</h3>
+            <input ref={liveInput} type="file" accept="image/*" hidden onChange={onLiveUpload} />
+            <button className="btn" onClick={() => liveInput.current?.click()}>
+              {liveSrc ? 'Replace image…' : 'Upload a wallpaper…'}
+            </button>
+            {gallery.length > 0 && (
+              <>
+                <p className="note" style={{ marginTop: 8 }}>…or pick from the gallery:</p>
+                <div className="wp-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+                  {gallery.slice(0, 9).map((g) => (
+                    <img key={g.id} src={g.url} alt="" onClick={() => setLiveSrc(g.url)}
+                      style={{ width: '100%', borderRadius: 6, cursor: 'pointer', display: 'block',
+                        outline: liveSrc === g.url ? '2px solid var(--accent)' : 'none' }} />
+                  ))}
+                </div>
+              </>
+            )}
+            <h3>Motion</h3>
+            <div className="field">
+              <label>Effect</label>
+              <select value={liveEffect} onChange={(e) => setLiveEffect(e.target.value)}>
+                {Object.keys(LIVE_EFFECTS).map((k) => <option key={k} value={k}>{k}</option>)}
+              </select>
+            </div>
+            <p className="note">{LIVE_EFFECTS[liveEffect]}</p>
+            <div className="field">
+              <label>Loop length</label>
+              <select value={liveSeconds} onChange={(e) => setLiveSeconds(+e.target.value)}>
+                {LIVE_DURATIONS.map((n) => <option key={n} value={n}>{n} s</option>)}
+              </select>
+            </div>
+            <h3>Record</h3>
+            <button className="btn primary" disabled={!liveSrc || /Recording|Preparing/.test(liveStatus)} onClick={recordLive}>
+              {/Recording|Preparing/.test(liveStatus) ? liveStatus : `Record ${liveSeconds}s loop (1080×1920)`}
+            </button>
+            {liveStatus && !/Recording|Preparing/.test(liveStatus) && <p className="note">{liveStatus}</p>}
+            <p className="note">
+              Records the preview in real time to a seamless loop — the last frame matches the
+              first. On the phone: intoLive (or any Live-Photo converter) → set as Lock Screen
+              wallpaper. For real video footage, <code>tools/live-wallpaper.sh</code> still handles
+              trimming and looping.
+            </p>
+          </>
+        ) : mode === 'depth' ? (
           <>
             <h3>Depth prompt</h3>
             <textarea
@@ -365,9 +461,26 @@ export default function WallpapersTab({ pack, initialMode }) {
               placeholder="describe anything — this is sent to the model verbatim"
               onChange={(e) => { setPrompt(e.target.value); setPresetName(''); }}
             />
+            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+              <button
+                className="btn small"
+                title="Append the parallax composition spec (iOS Perspective Zoom): fg/bg separation + edge bleed"
+                onClick={() => setPrompt((t) => `${t.trim()} ${PARALLAX_SPEC}`)}
+              >
+                + parallax spec
+              </button>
+              <button
+                className="btn small"
+                title="Append the depth-effect spec (subject's top edge crosses the clock area)"
+                onClick={() => setPrompt((t) => `${t.trim()} ${DEPTH_SPEC}`)}
+              >
+                + depth spec
+              </button>
+            </div>
             <p className="note">
               Free-form: any subject, any style, any wording. The starting points below just fill
-              this box — edit or replace it however you like.
+              this box — edit or replace it however you like. For parallax, save at a
+              “Parallax” size (20% bleed for the tilt shift).
             </p>
             <h3>Reference images ({refs.length}/4)</h3>
             <input ref={refsInput} type="file" accept="image/*" multiple hidden onChange={onRefs} />
@@ -422,7 +535,29 @@ export default function WallpapersTab({ pack, initialMode }) {
 
       <div className="content">
         <div className="wp-wrap">
-          {mode === 'depth' ? (
+          {mode === 'live' ? (
+            <>
+              <h2>Live wallpaper</h2>
+              <p className="note">
+                Pick a still, choose a motion, watch the loop — then record it as a video file.
+                The loop is seamless by construction (every effect ends exactly where it starts).
+              </p>
+              {liveSrc ? (
+                <div className="depth-stage">
+                  <div className="depth-phone">
+                    <canvas ref={liveCanvas} width={360} height={640}
+                      style={{ width: '100%', height: '100%', display: 'block', borderRadius: 'inherit' }} />
+                  </div>
+                </div>
+              ) : (
+                <p className="note">Upload a wallpaper or pick one from the gallery to start.</p>
+              )}
+              <p className="note">
+                Live Photos can't be created programmatically (Apple restriction) — the export is
+                a loop video; the free intoLive app pairs it into a Live Photo in one tap.
+              </p>
+            </>
+          ) : mode === 'depth' ? (
             <>
               <h2>Depth-effect wallpaper</h2>
               <p className="note">

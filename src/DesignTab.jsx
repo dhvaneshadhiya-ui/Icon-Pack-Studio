@@ -3,6 +3,7 @@ import { icons } from 'lucide';
 import { APP_CATALOG, BRANDS, BRAND_NAMES, GLYPH_NAMES, APP_GLYPH_NAMES, STYLE_PRESETS, isBrand, isAppGlyph, appGlyphOf, isTrademarkGlyph, genericGlyphFor, auditTrademarks, makeIcon, defaultPack, blankPack } from './model.js';
 import { normalizeImage, shade, pickText } from './svg.js';
 import { IconTile } from './App.jsx';
+import AIPanel from './AIPanel.jsx';
 
 function GlyphButton({ name, active, onClick }) {
   const svg = useMemo(() => {
@@ -45,7 +46,8 @@ function GlyphButton({ name, active, onClick }) {
   );
 }
 
-export default function DesignTab({ pack, setPack, updateStyle, updateIcon }) {
+export default function DesignTab({ pack, setPack, updateStyle, updateIcon, initialMode, openSettings }) {
+  const [mode, setMode] = useState(initialMode === 'ai' ? 'ai' : 'style'); // 'style' | 'ai'
   const [selectedId, setSelectedId] = useState(pack.icons[0]?.id ?? null);
   const [glyphQuery, setGlyphQuery] = useState('');
   const [catalogQuery, setCatalogQuery] = useState('');
@@ -144,6 +146,17 @@ export default function DesignTab({ pack, setPack, updateStyle, updateIcon }) {
   return (
     <div className="main">
       <div className="sidebar">
+        <div className="seg" style={{ marginBottom: 14 }}>
+          {[['style', 'Studio'], ['ai', 'AI icons']].map(([m, label]) => (
+            <button key={m} className={mode === m ? 'active' : ''} onClick={() => setMode(m)}>
+              {label}
+            </button>
+          ))}
+        </div>
+        {mode === 'ai' ? (
+          <AIPanel pack={pack} updateIcon={updateIcon} openSettings={openSettings} />
+        ) : (
+        <>
         <h3>Style presets</h3>
         <div className="presets">
           {STYLE_PRESETS.map((p) => (
@@ -395,6 +408,8 @@ export default function DesignTab({ pack, setPack, updateStyle, updateIcon }) {
         >
           Reset pack
         </button>
+        </>
+        )}
       </div>
 
       <div className="content">

@@ -76,6 +76,12 @@ export const WALLPAPER_PRESETS = [
   },
 ];
 
+// House spec for parallax wallpapers (iOS Perspective Zoom / launcher
+// scrolling): append to any prompt. Parallax crops inward as the phone tilts,
+// so the image needs bleed on every edge and nothing important near them.
+export const PARALLAX_SPEC =
+  'Composed for phone parallax (iOS Perspective Zoom): a clear foreground subject in front of a distant background with strong depth separation between planes. Keep the subject and all important detail well inside the frame with generous bleed on every edge — the frame shifts as the phone tilts, so nothing meaningful near the edges. Layered depth, atmospheric perspective. Vertical composition. Wallpaper quality. Ultra high detail. No text, no logos, no watermark.';
+
 export function readAiConfig() {
   try {
     return JSON.parse(localStorage.getItem(AI_CFG)) || {};

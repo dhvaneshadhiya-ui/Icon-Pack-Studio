@@ -1,19 +1,17 @@
-import React, { useState } from 'react';
+import React from 'react';
 
 const CARDS = [
   ['🎨', 'Icon pack', 'Design icons from ~5,200 glyphs — styles, gradients, finishes.', ['design']],
-  ['🤖', 'AI icon pack', 'Batch-generate painted icons with gpt-image-2 + theme prompts.', ['ai']],
+  ['🤖', 'AI icon pack', 'Batch-generate painted icons with gpt-image-2 + theme prompts.', ['design', 'ai']],
   ['🌄', 'Wallpapers', 'Ten procedural styles from any palette, up to 4K.', ['wallpapers', 'design']],
-  ['✨', 'AI wallpapers', 'Free-form prompts + reference images. Save at 4K.', ['wallpapers', 'ai']],
+  ['✨', 'AI wallpapers', 'Free-form prompts + references. Depth & parallax specs. 4K saves.', ['wallpapers', 'ai']],
   ['🕰️', 'Depth wallpaper', 'Lock Screen depth-effect composition — subject crosses the clock.', ['wallpapers', 'depth']],
-  ['🎞️', 'Live wallpaper', 'Seamless-loop MOV kit from any video clip.', null],
+  ['🎞️', 'Live wallpaper', 'Animate any still into a seamless loop video, in the browser.', ['wallpapers', 'live']],
   ['🧩', 'Widgets', 'Matching widget art, live Scriptable widgets, launchers.', ['widgets']],
   ['📦', 'Export', 'ZIPs, CrestWall bundles, install profiles, mockups.', ['export']],
 ];
 
 export default function HomeTab({ go }) {
-  const [liveOpen, setLiveOpen] = useState(false);
-
   return (
     <div className="content">
       <div className="home-wrap">
@@ -25,33 +23,13 @@ export default function HomeTab({ go }) {
         </p>
         <div className="home-grid">
           {CARDS.map(([emoji, title, blurb, dest]) => (
-            <button
-              key={title}
-              className="home-card"
-              onClick={() => (dest ? go(...dest) : setLiveOpen((v) => !v))}
-            >
+            <button key={title} className="home-card" onClick={() => go(...dest)}>
               <span className="home-emoji">{emoji}</span>
               <span className="home-title">{title}</span>
               <span className="home-blurb">{blurb}</span>
             </button>
           ))}
         </div>
-        {liveOpen && (
-          <div className="home-live">
-            <h3>Live wallpaper workflow</h3>
-            <p className="note">
-              Apple blocks programmatic Live-Photo wallpapers, so live wallpapers ship as a seamless
-              loop MOV plus converter instructions (intoLive / Photos). Ask the
-              <code> /icon-pack-themes</code> skill for a video prompt (4–6&nbsp;s, loopable motion,
-              vertical), generate the clip, then run:
-            </p>
-            <pre className="home-code">./tools/live-wallpaper.sh input.mp4 "Name" 4</pre>
-            <p className="note">
-              Outputs a forward+reverse seamless loop, a still frame, a cover and a README — ready
-              for CrestWall or Gumroad.
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );

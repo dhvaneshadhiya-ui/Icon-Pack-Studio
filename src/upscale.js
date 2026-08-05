@@ -6,6 +6,10 @@ export const OUTPUT_SIZES = {
   'Original (as generated)': null,
   'iPhone Pro Max · 1290×2796': [1290, 2796],
   'iPhone 4K · 2160×3840': [2160, 3840],
+  // parallax (iOS Perspective Zoom) wants ~20% bleed beyond the screen so the
+  // frame can shift as the phone tilts
+  'Parallax iPhone · 1548×3355': [1548, 3355],
+  'Parallax 4K · 2592×4608': [2592, 4608],
 };
 
 function loadImage(src) {
