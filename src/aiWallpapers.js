@@ -2,6 +2,7 @@
 // aspect ratios, batch runs, and a persisted results gallery.
 import { normalizeImage } from './svg.js';
 import { kvGet, kvSet } from './storage.js';
+import { isLocalEndpoint } from './aiConfig.js';
 
 const AI_CFG = 'iconPackStudio.ai.v2';
 const GALLERY = 'iconPackStudio.wallpaperGallery.v1';
@@ -96,9 +97,9 @@ export function readAiConfig() {
  */
 export async function generateWallpapers({ prompt, aspect, count = 1, refs = [], onImage, onProgress }) {
   const cfg = readAiConfig();
-  if (!cfg.key) throw new Error('Add your API key in the AI Generate tab first.');
-  const size = ASPECTS[aspect] ?? ASPECTS.Portrait;
   const genUrl = cfg.endpoint || 'https://api.openai.com/v1/images/generations';
+  if (!cfg.key && !isLocalEndpoint(genUrl)) throw new Error('Add your API key in ⚙ Settings first.');
+  const size = ASPECTS[aspect] ?? ASPECTS.Portrait;
   // reference images require the edits endpoint (multipart), mirroring the
   // ChatGPT + reference workflow used for CrestWall wallpapers
   const editUrl = genUrl.replace(/generations$/, 'edits');

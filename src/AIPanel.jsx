@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { normalizeImage } from './svg.js';
-import { loadAiCfg, saveAiCfg } from './aiConfig.js';
+import { loadAiCfg, saveAiCfg, isLocalEndpoint } from './aiConfig.js';
 import { useRefTray } from './refTray.jsx';
 
 // Every theme follows the same anatomy — see PROMPT_PLAYBOOK.md:
@@ -137,9 +137,11 @@ export default function AIPanel({ pack, updateIcon, openSettings }) {
   return (
     <>
       <p className="note">
-        {cfg.key
-          ? <>✓ Using <code>{cfg.model}</code> with your saved key.</>
-          : <>No API key yet — add one to enable generation.</>}
+        {isLocalEndpoint(cfg.endpoint)
+          ? <>✓ Using local <code>{cfg.model}</code> — no key, no cost, no filter.</>
+          : cfg.key
+            ? <>✓ Using <code>{cfg.model}</code> with your saved key.</>
+            : <>No API key yet — add one to enable generation.</>}
         {' '}
         <button className="btn small" onClick={openSettings}>⚙ Settings</button>
       </p>
@@ -181,19 +183,21 @@ export default function AIPanel({ pack, updateIcon, openSettings }) {
       </p>
       <button
         className="btn primary"
-        disabled={running || !cfg.key || missing.length === 0}
+        disabled={running || (!cfg.key && !isLocalEndpoint(cfg.endpoint)) || missing.length === 0}
         onClick={() => generate(missing)}
       >
         Generate {missing.length} icons without images
       </button>
       <button
         className="btn"
-        disabled={running || !cfg.key || pack.icons.length === 0}
+        disabled={running || (!cfg.key && !isLocalEndpoint(cfg.endpoint)) || pack.icons.length === 0}
         onClick={() => confirm('Regenerate ALL icons? Existing AI images and uploads will be replaced.') && generate(pack.icons)}
       >
         Regenerate all {pack.icons.length}
       </button>
-      {!cfg.key && <p className="warn">Add your API key in ⚙ Settings to enable generation.</p>}
+      {!cfg.key && !isLocalEndpoint(cfg.endpoint) && (
+        <p className="warn">Add your API key in ⚙ Settings to enable generation.</p>
+      )}
       {progress && <div className="progress">{progress}</div>}
       {errors.map((e, i) => (
         <p className="warn" key={i}>{e}</p>

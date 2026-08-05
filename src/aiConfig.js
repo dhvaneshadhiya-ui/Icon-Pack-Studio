@@ -24,6 +24,11 @@ export function loadAiCfg() {
   }
 }
 
+// Local servers (LocalAI/ComfyUI/our mflux server) need no API key.
+export function isLocalEndpoint(endpoint) {
+  return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(endpoint || '');
+}
+
 export function saveAiCfg(patch) {
   const next = { ...loadAiCfg(), ...patch };
   localStorage.setItem(CFG_KEY, JSON.stringify(next));

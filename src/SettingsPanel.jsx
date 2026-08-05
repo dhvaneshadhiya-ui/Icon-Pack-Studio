@@ -18,10 +18,10 @@ const PROVIDER_PRESETS = [
     note: 'Permissive on dark/action/gothic themes. Needs a Together API key. If the browser blocks the call (CORS), run it through a local proxy.',
   },
   {
-    name: 'Local · LocalAI / ComfyUI (uncensored SD/FLUX)',
+    name: 'Local · FLUX.1-schnell (uncensored, this Mac)',
     endpoint: 'http://localhost:8080/v1/images/generations',
-    model: 'stablediffusion',
-    note: 'Runs on this Mac — no content filter, no per-image cost, works offline. Install LocalAI (or ComfyUI with an OpenAI-compatible adapter) and load any SD/FLUX checkpoint.',
+    model: 'flux.1-schnell-4bit',
+    note: 'Runs on this Mac via MLX — no key, no content filter, no per-image cost, works offline. Start it with local-ai/run.sh in the repo (first run downloads ~9 GB).',
   },
 ];
 
