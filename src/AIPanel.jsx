@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { normalizeImage } from './svg.js';
 import { loadAiCfg, saveAiCfg, isLocalEndpoint } from './aiConfig.js';
+import { unreachable } from './aiWallpapers.js';
 import { useRefTray } from './refTray.jsx';
 
 // Every theme follows the same anatomy — see PROMPT_PLAYBOOK.md:
@@ -84,6 +85,7 @@ export default function AIPanel({ pack, updateIcon, openSettings }) {
       try {
         let res;
         const promptText = cfg.prompt.replaceAll('{app}', ic.label);
+        try {
         if (refs.length) {
           // style references ride along on every icon via the edits endpoint
           const fd = new FormData();
@@ -105,6 +107,9 @@ export default function AIPanel({ pack, updateIcon, openSettings }) {
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.key}` },
             body: JSON.stringify({ model: cfg.model, prompt: promptText, n: 1, size: '1024x1024' }),
           });
+        }
+        } catch (netErr) {
+          throw new Error(unreachable(cfg.endpoint, netErr));
         }
         if (!res.ok) {
           const body = await res.text();

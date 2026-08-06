@@ -84,6 +84,14 @@ export const WALLPAPER_PRESETS = [
 export const PARALLAX_SPEC =
   'Composed for phone parallax (iOS Perspective Zoom): a clear foreground subject in front of a distant background with strong depth separation between planes. Keep the subject and all important detail well inside the frame with generous bleed on every edge — the frame shifts as the phone tilts, so nothing meaningful near the edges. Layered depth, atmospheric perspective. Vertical composition. Wallpaper quality. Ultra high detail. No text, no logos, no watermark.';
 
+/** Turn an opaque fetch failure into something the user can act on. */
+export function unreachable(url, err) {
+  if (isLocalEndpoint(url)) {
+    return 'Can\'t reach the local model server at localhost:8080. Start it with local-ai/run.sh, or switch provider in ⚙ Settings.';
+  }
+  return `Couldn't reach ${new URL(url).host} — check your connection, the endpoint in ⚙ Settings, or whether that host allows browser requests (CORS). (${err.message})`;
+}
+
 export function readAiConfig() {
   try {
     return JSON.parse(localStorage.getItem(AI_CFG)) || {};
@@ -108,26 +116,31 @@ export async function generateWallpapers({ prompt, aspect, count = 1, refs = [],
   for (let i = 0; i < count; i++) {
     onProgress?.(`Generating ${i + 1}/${count}…`);
     let res;
-    if (refs.length) {
-      const fd = new FormData();
-      fd.append('model', cfg.model || 'gpt-image-2');
-      fd.append('prompt', prompt);
-      fd.append('n', '1');
-      fd.append('size', size);
-      for (let r = 0; r < refs.length; r++) {
-        fd.append('image[]', await (await fetch(refs[r])).blob(), `ref-${r}.png`);
+    try {
+      if (refs.length) {
+        const fd = new FormData();
+        fd.append('model', cfg.model || 'gpt-image-2');
+        fd.append('prompt', prompt);
+        fd.append('n', '1');
+        fd.append('size', size);
+        for (let r = 0; r < refs.length; r++) {
+          fd.append('image[]', await (await fetch(refs[r])).blob(), `ref-${r}.png`);
+        }
+        res = await fetch(editUrl, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${cfg.key}` }, // browser sets multipart boundary
+          body: fd,
+        });
+      } else {
+        res = await fetch(genUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.key}` },
+          body: JSON.stringify({ model: cfg.model || 'gpt-image-2', prompt, n: 1, size }),
+        });
       }
-      res = await fetch(editUrl, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${cfg.key}` }, // browser sets multipart boundary
-        body: fd,
-      });
-    } else {
-      res = await fetch(genUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.key}` },
-        body: JSON.stringify({ model: cfg.model || 'gpt-image-2', prompt, n: 1, size }),
-      });
+    } catch (e) {
+      // a network-level failure surfaces as the useless "Load failed"
+      throw new Error(unreachable(genUrl, e));
     }
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`);
     const item = (await res.json()).data?.[0];
