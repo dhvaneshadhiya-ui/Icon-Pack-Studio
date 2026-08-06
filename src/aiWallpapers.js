@@ -104,7 +104,7 @@ export function readAiConfig() {
  * Generate `count` wallpapers. Calls back per image so the gallery fills
  * progressively rather than waiting for the whole batch.
  */
-export async function generateWallpapers({ prompt, aspect, count = 1, refs = [], onImage, onProgress }) {
+export async function generateWallpapers({ prompt, aspect, count = 1, refs = [], refStrength, onImage, onProgress }) {
   const cfg = readAiConfig();
   const genUrl = cfg.endpoint || 'https://api.openai.com/v1/images/generations';
   if (!cfg.key && !isLocalEndpoint(genUrl)) throw new Error('Add your API key in ⚙ Settings first.');
@@ -123,6 +123,10 @@ export async function generateWallpapers({ prompt, aspect, count = 1, refs = [],
         fd.append('prompt', prompt);
         fd.append('n', '1');
         fd.append('size', size);
+        // only our local server understands this; OpenAI would reject it
+        if (isLocalEndpoint(genUrl) && refStrength != null) {
+          fd.append('image_strength', String(refStrength));
+        }
         for (let r = 0; r < refs.length; r++) {
           fd.append('image[]', await (await fetch(refs[r])).blob(), `ref-${r}.png`);
         }

@@ -12,11 +12,13 @@ import argparse
 import base64
 import concurrent.futures
 import io
+import os
 import random
 import re
+import tempfile
 import time
 
-from fastapi import FastAPI
+from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -82,8 +84,15 @@ def models():
     return {"data": [{"id": MODEL_NAME, "object": "model"}]}
 
 
-def _render(prompt: str, w: int, h: int, n: int):
-    """Runs on the single mflux worker thread — never call directly."""
+def _render(prompt: str, w: int, h: int, n: int, image_path: str | None = None,
+            image_strength: float = 0.30):
+    """Runs on the single mflux worker thread — never call directly.
+
+    image_path turns this into img2img: the reference steers composition and
+    palette. image_strength is how much of the reference to keep — measured
+    on this setup: ~0.3 keeps the palette/mood while the prompt drives the
+    subject (the useful default), ~0.55+ essentially reproduces the
+    reference and ignores the prompt."""
     import mlx.core as mx
 
     out = []
@@ -91,6 +100,9 @@ def _render(prompt: str, w: int, h: int, n: int):
         seed = random.randint(0, 2**31 - 1)
         t0 = time.time()
         kwargs = {"guidance": GUIDANCE} if GUIDANCE is not None else {}
+        if image_path:
+            kwargs["image_path"] = image_path
+            kwargs["image_strength"] = image_strength
         result = FLUX.generate_image(
             seed=seed,
             prompt=prompt,
@@ -116,6 +128,40 @@ def generate(req: GenRequest):
     w, h = parse_size(req.size)
     n = max(1, min(4, req.n))
     out = WORKER.submit(_render, req.prompt, w, h, n).result()
+    return {"created": int(time.time()), "data": out}
+
+
+@app.post("/v1/images/edits")
+async def edits(
+    prompt: str = Form(...),
+    n: int = Form(1),
+    size: str = Form("1024x1536"),
+    image_strength: float = Form(0.30),
+    image: list[UploadFile] = File(default=[], alias="image[]"),
+):
+    """Reference-image generation (img2img).
+
+    The Studio posts here whenever references are attached. mflux takes a
+    single reference, so only the first upload is used — say so in the
+    response header rather than silently ignoring the rest.
+    """
+    w, h = parse_size(size)
+    if not image:
+        out = WORKER.submit(_render, prompt, w, h, max(1, min(4, n))).result()
+        return {"created": int(time.time()), "data": out}
+
+    tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+    try:
+        tmp.write(await image[0].read())
+        tmp.close()
+        if len(image) > 1:
+            print(f"note: {len(image)} references sent, using the first "
+                  f"(mflux img2img takes one)", flush=True)
+        out = WORKER.submit(
+            _render, prompt, w, h, max(1, min(4, n)), tmp.name, image_strength
+        ).result()
+    finally:
+        os.unlink(tmp.name)
     return {"created": int(time.time()), "data": out}
 
 

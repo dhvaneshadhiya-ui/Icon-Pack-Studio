@@ -73,6 +73,8 @@ export default function WallpapersTab({ pack, initialMode }) {
   const [aiStatus, setAiStatus] = useState('');
   const [gallery, setGallery] = useState([]);
   const [outSize, setOutSize] = useState('iPhone 4K · 2160×3840');
+  const [refStrength, setRefStrength] = useState(0.3);
+  const localMode = isLocalEndpoint(loadAiCfg().endpoint);
   const refsInput = React.useRef(null);
   const onRefs = async (e) => {
     const files = [...(e.target.files || [])];
@@ -257,6 +259,7 @@ export default function WallpapersTab({ pack, initialMode }) {
         aspect,
         count,
         refs,
+        refStrength,
         onProgress: setAiStatus,
         onImage: (entry) => {
           added.push(entry);
@@ -588,6 +591,20 @@ export default function WallpapersTab({ pack, initialMode }) {
               Or drag &amp; drop / paste (⌘V) images anywhere in the app — they land in the tray
               at the bottom and are sent with every generation (images/edits endpoint).
             </p>
+            {localMode && refs.length > 0 && (
+              <>
+                <div className="field">
+                  <label>Reference influence {refStrength.toFixed(2)}</label>
+                  <input type="range" min="0.15" max="0.7" step="0.05" value={refStrength}
+                    onChange={(e) => setRefStrength(+e.target.value)} />
+                </div>
+                <p className="note">
+                  Local img2img: ~0.30 keeps the reference's palette and mood while your prompt
+                  drives the subject (a matching set). Above ~0.55 it largely recreates the
+                  reference. Only the first reference is used locally.
+                </p>
+              </>
+            )}
             <h3>Starting points</h3>
             <div className="preset-list">
               {WALLPAPER_PRESETS.map((q) => (

@@ -56,4 +56,14 @@ else:
 PY
 fi
 
-exec "$VENV/bin/python" "$SCRIPT_DIR/server.py" --model-path "$MODEL_DIR" --port 8080 "$@"
+# Supervisor loop: macOS can kill a long GPU command buffer with
+# "[METAL] Command buffer execution failed: Impacting Interactivity", which
+# aborts the process. Relaunch so a crash costs a model reload, not the
+# session. Ctrl-C still exits cleanly.
+trap 'echo; echo "stopped."; exit 0' INT TERM
+while true; do
+  "$VENV/bin/python" "$SCRIPT_DIR/server.py" --model-path "$MODEL_DIR" --port 8080 "$@" && break
+  echo "--- server exited unexpectedly (likely the Metal GPU watchdog); restarting in 3s"
+  echo "    if this repeats, use a smaller size or --steps 4, and avoid other GPU-heavy apps"
+  sleep 3
+done

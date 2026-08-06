@@ -49,6 +49,17 @@ Generate wallpapers/icons exactly as with OpenAI.
 
 ## Notes
 
+- **Reference images work** via `POST /v1/images/edits` (img2img). mflux takes
+  one reference, so only the first attachment is used. The Studio shows a
+  **Reference influence** slider when a reference is attached on the local
+  provider: ~0.30 keeps the reference's palette and mood while your prompt
+  drives the subject (a matching set); above ~0.55 it largely recreates the
+  reference.
+- **Known crash:** macOS can abort a long GPU command with
+  `[METAL] Command buffer execution failed: Impacting Interactivity` — its
+  watchdog for GPU work that blocks the UI. `run.sh` supervises the server
+  and restarts it automatically. To avoid it: smaller sizes, `--steps 4`,
+  and don't run other GPU-heavy apps during a batch.
 - Use the Studio's **"Portrait (fast)" (768×1152)** aspect for local runs —
   the 4K save sizes upscale from there, and it is roughly twice as fast as
   full 1024×1536. Sizes are capped at 1024×1536 and rounded to multiples of
