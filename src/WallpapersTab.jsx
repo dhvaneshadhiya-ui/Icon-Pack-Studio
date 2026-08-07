@@ -9,7 +9,10 @@ import {
 } from './aiWallpapers.js';
 import { composeDepth, CLOCK_BAND, DEPTH_PROMPT_TEMPLATE, DEPTH_SPEC } from './depth.js';
 import { OUTPUT_SIZES, renderAtSize } from './upscale.js';
-import { LIVE_EFFECTS, LIVE_DURATIONS, drawLiveFrame, recordLiveWallpaper } from './liveWallpaper.js';
+import {
+  LIVE_EFFECTS, LIVE_DURATIONS, drawLiveFrame, recordLiveWallpaper,
+  remotionAvailable, renderViaRemotion,
+} from './liveWallpaper.js';
 import { VIDEO_SECONDS, VIDEO_COST_PER_SEC, generateVideo, smoothLoop } from './aiVideo.js';
 import { normalizeImage } from './svg.js';
 import { useRefTray } from './refTray.jsx';
@@ -152,6 +155,11 @@ export default function WallpapersTab({ pack, initialMode }) {
   const [liveStatus, setLiveStatus] = useState('');
   const liveInput = React.useRef(null);
   const liveCanvas = React.useRef(null);
+  const [remotionFx, setRemotionFx] = useState(null); // effect list when the service is up
+
+  useEffect(() => {
+    if (mode === 'live') remotionAvailable().then(setRemotionFx);
+  }, [mode]);
 
   useEffect(() => {
     if (mode !== 'live' || liveSource !== 'still' || !liveSrc || !liveCanvas.current) return;
@@ -214,16 +222,21 @@ export default function WallpapersTab({ pack, initialMode }) {
   const recordLive = async () => {
     setLiveStatus('Preparing…');
     try {
-      const { blob, ext } = await recordLiveWallpaper({
-        imageUrl: liveSrc,
-        effect: liveEffect,
-        seconds: liveSeconds,
-        onProgress: setLiveStatus,
-      });
+      const { blob, ext } = remotionFx
+        ? await renderViaRemotion({
+            imageUrl: liveSrc, effect: liveEffect, seconds: liveSeconds, onProgress: setLiveStatus,
+          })
+        : await recordLiveWallpaper({
+            imageUrl: liveSrc, effect: liveEffect, seconds: liveSeconds, onProgress: setLiveStatus,
+          });
       downloadBlob(blob, `${sanitize(name)}-Live-${liveEffect.replace(/\s+/g, '')}.${ext}`);
-      setLiveStatus(ext === 'mp4'
-        ? 'Saved MP4 — AirDrop it to your phone and convert with intoLive.'
-        : 'Saved WebM (this browser can\'t mux MP4) — convert to MP4 before intoLive.');
+      setLiveStatus(
+        remotionFx
+          ? 'Saved MP4 (Remotion, frame-exact loop) — AirDrop to your phone and convert with intoLive.'
+          : ext === 'mp4'
+            ? 'Saved MP4 — AirDrop it to your phone and convert with intoLive.'
+            : 'Saved WebM (this browser can\'t mux MP4) — convert to MP4 before intoLive.'
+      );
     } catch (e) {
       setLiveStatus(e.message);
     }
@@ -385,10 +398,16 @@ export default function WallpapersTab({ pack, initialMode }) {
             <div className="field">
               <label>Effect</label>
               <select value={liveEffect} onChange={(e) => setLiveEffect(e.target.value)}>
-                {Object.keys(LIVE_EFFECTS).map((k) => <option key={k} value={k}>{k}</option>)}
+                {(remotionFx ?? Object.keys(LIVE_EFFECTS)).map((k) => <option key={k} value={k}>{k}</option>)}
               </select>
             </div>
-            <p className="note">{LIVE_EFFECTS[liveEffect]}</p>
+            <p className="note">
+              {LIVE_EFFECTS[liveEffect] ?? (
+                liveEffect === 'Parallax'
+                  ? 'Foreground and background drift at different rates — depth you can feel.'
+                  : 'Subject breathes forward from a softly blurred background.'
+              )}
+            </p>
             <div className="field">
               <label>Loop length</label>
               <select value={liveSeconds} onChange={(e) => setLiveSeconds(+e.target.value)}>
@@ -401,9 +420,21 @@ export default function WallpapersTab({ pack, initialMode }) {
             </button>
             {liveStatus && !/Recording|Preparing/.test(liveStatus) && <p className="note">{liveStatus}</p>}
             <p className="note">
-              Records the preview in real time to a seamless loop — the last frame matches the
-              first. On the phone: intoLive (or any Live-Photo converter) → set as Lock Screen
-              wallpaper. For real video footage, <code>tools/live-wallpaper.sh</code> still handles
+              {remotionFx ? (
+                <>
+                  ✓ <strong>Remotion engine</strong> — renders frame-by-frame at 1080×1920 / CRF 18,
+                  so no dropped frames and an exact loop (~25 s per 4 s clip). Extra effects:
+                  Parallax, Depth pulse.
+                </>
+              ) : (
+                <>
+                  Recording in the browser in real time. For frame-exact loops, better encoding and
+                  the Parallax/Depth effects, start the Remotion engine:{' '}
+                  <code>cd live-engine &amp;&amp; npm run server</code>
+                </>
+              )}
+              {' '}On the phone: intoLive (or any Live-Photo converter) → set as Lock Screen
+              wallpaper. For real video footage, <code>tools/live-wallpaper.sh</code> handles
               trimming and looping.
             </p>
             </>

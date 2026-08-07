@@ -3,3 +3,7 @@ build-out/
 dist/
 .DS_Store
 *.log
+
+live-engine/node_modules
+live-engine/server.log
+local-ai/bench-*.png

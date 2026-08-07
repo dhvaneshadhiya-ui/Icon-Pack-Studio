@@ -18,6 +18,38 @@ export const LIVE_EFFECTS = {
 
 export const LIVE_DURATIONS = [4, 5, 6];
 
+// The Remotion render service (live-engine/server.mjs) renders frame-by-frame
+// instead of capturing in realtime: no dropped frames, exact loops, proper
+// H.264 encoding, and richer effects. Optional — we fall back to the
+// in-browser MediaRecorder path when it isn't running.
+export const REMOTION_URL = 'http://localhost:8081';
+
+export async function remotionAvailable() {
+  try {
+    const r = await fetch(`${REMOTION_URL}/health`, { signal: AbortSignal.timeout(1500) });
+    if (!r.ok) return null;
+    const j = await r.json();
+    return j.ok ? j.effects : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function renderViaRemotion({ imageUrl, effect, seconds, onProgress }) {
+  onProgress?.('Rendering with Remotion…');
+  const res = await fetch(`${REMOTION_URL}/render`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: imageUrl, effect, seconds }),
+  });
+  if (!res.ok) {
+    let msg = `HTTP ${res.status}`;
+    try { msg = (await res.json()).error || msg; } catch { /* keep status */ }
+    throw new Error(msg);
+  }
+  return { blob: await res.blob(), ext: 'mp4' };
+}
+
 // smooth ping-pong: 0 → 1 → 0 with zero velocity at both ends
 const pp = (t) => (1 - Math.cos(2 * Math.PI * t)) / 2;
 
